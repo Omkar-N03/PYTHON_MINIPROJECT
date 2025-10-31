@@ -1,0 +1,239 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Profile - QUIZMASTER</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #1a0b2e 0%, #2d1b4e 100%); min-height: 100vh; color: #fff; overflow-x: hidden; }
+        .video-background { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; }
+        .video-background video { position: absolute; top: 50%; left: 50%; min-width: 100%; min-height: 100%; transform: translate(-50%, -50%); object-fit: cover; opacity: 0.1; }
+        .animated-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+        .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.2; animation: float 20s ease-in-out infinite; }
+        .orb-1 { width: 400px; height: 400px; background: linear-gradient(135deg, #3b82f6, #06b6d4); top: -100px; left: -100px; }
+        .orb-2 { width: 350px; height: 350px; background: linear-gradient(135deg, #8b5cf6, #ec4899); bottom: -100px; right: -100px; animation-delay: -10s; }
+        .orb-3 { width: 300px; height: 300px; background: linear-gradient(135deg, #06b6d4, #3b82f6); top: 30%; right: 10%; animation-delay: -5s; }
+        @keyframes float { 0%, 100% { transform: translate(0, 0) rotate(0deg); } 25% { transform: translate(50px, -50px) rotate(90deg); } 50% { transform: translate(-30px, -30px) rotate(180deg); } 75% { transform: translate(-50px, 50px) rotate(270deg); } }
+        .navbar { position: sticky; top: 0; z-index: 100; background: rgba(30, 20, 50, 0.85); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(59, 130, 246, 0.2); padding: 1rem 2rem; }
+        .navbar-content { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; font-weight: 700; font-size: 20px; }
+        .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #06b6d4); border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 6px; }
+        .logo-icon img { width: 100%; height: 100%; object-fit: contain; filter: brightness(0) invert(1); }
+        .back-btn { display: flex; align-items: center; gap: 8px; padding: 10px 20px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; color: #cbd5e1; text-decoration: none; font-weight: 600; transition: all 0.3s; }
+        .back-btn:hover { background: rgba(59, 130, 246, 0.2); transform: translateY(-2px); }
+        .main-container { position: relative; z-index: 1; max-width: 1200px; margin: 2rem auto; padding: 0 2rem; }
+        .messages-container { margin-bottom: 1.5rem; }
+        .alert { padding: 1rem; border-radius: 10px; margin-bottom: 1rem; font-weight: 500; }
+        .alert-success { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .alert-error, .alert-danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .profile-header { background: rgba(30, 20, 50, 0.7); backdrop-filter: blur(20px); border-radius: 20px; padding: 2rem; border: 1px solid rgba(59, 130, 246, 0.2); margin-bottom: 2rem; }
+        .profile-top { display: grid; grid-template-columns: auto 1fr auto; gap: 2rem; align-items: center; margin-bottom: 2rem; }
+        .profile-avatar-section { position: relative; }
+        .profile-avatar { width: 120px; height: 120px; background: linear-gradient(135deg, #3b82f6, #06b6d4); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 60px; box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4); }
+        .change-avatar-btn { position: absolute; bottom: -8px; right: -8px; width: 40px; height: 40px; background: linear-gradient(135deg, #06b6d4, #3b82f6); border: 3px solid rgba(30, 20, 50, 0.9); border-radius: 50%; cursor: pointer; font-size: 18px; transition: transform 0.3s; }
+        .change-avatar-btn:hover { transform: scale(1.1); }
+        .profile-info { display: flex; flex-direction: column; gap: 10px; }
+        .profile-name { font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #fff, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .profile-title { color: #94a3b8; font-size: 16px; }
+        .profile-badges { display: flex; gap: 10px; flex-wrap: wrap; }
+        .badge { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 20px; font-size: 13px; color: #cbd5e1; }
+        .edit-profile-btn { padding: 12px 24px; background: linear-gradient(135deg, #3b82f6, #06b6d4); color: #fff; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.3s; box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3); }
+        .edit-profile-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(59, 130, 246, 0.5); }
+        .profile-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(59, 130, 246, 0.2); }
+        .stat-item { text-align: center; display: flex; flex-direction: column; gap: 6px; }
+        .stat-value { font-size: 36px; font-weight: 700; background: linear-gradient(135deg, #3b82f6, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .stat-label { color: #94a3b8; font-size: 13px; font-weight: 500; text-transform: uppercase; }
+        .profile-content { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .profile-section { background: rgba(30, 20, 50, 0.7); backdrop-filter: blur(20px); border-radius: 16px; padding: 1.5rem; border: 1px solid rgba(59, 130, 246, 0.2); }
+        .profile-section.full-width { grid-column: 1 / -1; }
+        .section-title { display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 700; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid rgba(59, 130, 246, 0.2); }
+        .form-group { margin-bottom: 1.25rem; }
+        .form-group label { display: block; margin-bottom: 8px; color: #cbd5e1; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; background: rgba(15, 10, 30, 0.6); border: 2px solid rgba(59, 130, 246, 0.2); border-radius: 8px; color: #fff; font-size: 15px; transition: all 0.3s; font-family: inherit; }
+        .form-group input:disabled, .form-group select:disabled, .form-group textarea:disabled { background: rgba(15, 10, 30, 0.3); opacity: 0.7; cursor: not-allowed; }
+        .form-group input:not(:disabled):focus, .form-group select:not(:disabled):focus, .form-group textarea:not(:disabled):focus { border-color: #3b82f6; background: rgba(15, 10, 30, 0.9); outline: none; }
+        .form-group textarea { resize: vertical; min-height: 100px; }
+        .info-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(59, 130, 246, 0.1); }
+        .info-item:last-child { border-bottom: none; }
+        .info-label { color: #94a3b8; font-size: 14px; }
+        .info-value { color: #fff; font-size: 15px; font-weight: 600; }
+        .action-buttons { display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap; }
+        .btn { padding: 14px 28px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.3s; font-family: inherit; }
+        .btn-save { background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3); }
+        .btn-save:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(34, 197, 94, 0.5); }
+        .btn-cancel { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 2px solid rgba(148, 163, 184, 0.3); }
+        .btn-cancel:hover { background: rgba(148, 163, 184, 0.25); transform: translateY(-2px); }
+        @media (max-width: 1024px) { .profile-top { grid-template-columns: auto 1fr; } .edit-profile-btn { grid-column: 1 / -1; } }
+        @media (max-width: 768px) { .navbar-content { flex-direction: column; gap: 1rem; } .profile-top { grid-template-columns: 1fr; text-align: center; } .profile-avatar-section { margin: 0 auto; } .profile-stats { grid-template-columns: repeat(2, 1fr); } .profile-content { grid-template-columns: 1fr; } }
+        @media (max-width: 480px) { .main-container { padding: 0 1rem; } .profile-stats { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <!-- Video Background -->
+    <div class="video-background">
+        <video autoplay muted loop playsinline preload="metadata" aria-label="Background video">
+    <source src="{% static 'videos/BG.mp4' %}" type="video/mp4">
+    <track kind="captions" src="{% static 'videos/BG.vtt' %}" srclang="en" label="English">
+    Your browser does not support the video tag.
+        </video>
+
+    </div>
+
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="{% url 'quiz:teacher_dashboard' %}" class="logo">
+                <div class="logo-icon">
+                    <img src="{% static 'images/Logo.png' %}" alt="QUIZMASTER Logo">
+                </div>
+                <span>QUIZMASTER</span>
+            </a>
+            <a href="{% url 'quiz:teacher_dashboard' %}" class="back-btn">
+                <span>←</span>
+                <span>Back to Dashboard</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Django Messages -->
+        {% if messages %}
+        <div class="messages-container">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Profile Header -->
+        <div class="profile-header">
+            <div class="profile-top">
+                <div class="profile-avatar-section">
+                    <div class="profile-avatar" id="profileAvatar">👨‍🏫</div>
+                    <button class="change-avatar-btn" onclick="changeAvatar()">📷</button>
+                </div>
+                <div class="profile-info">
+                    <h1 class="profile-name">{{ teacher.user.get_full_name|default:teacher.user.username }}</h1>
+                    <p class="profile-title">{{ teacher.title|default:'Teacher' }}</p>
+                    <div class="profile-badges">
+                        <span class="badge"><span>⭐</span><span>{% if teacher.is_approved %}Verified{% else %}Pending{% endif %}</span></span>
+                        <span class="badge"><span>🏆</span><span>{{ teacher.years_experience|default:0 }} Years</span></span>
+                        <span class="badge"><span>📚</span><span>{{ total_quizzes }} Quizzes</span></span>
+                    </div>
+                </div>
+                <button class="edit-profile-btn" onclick="toggleEditMode()" id="editBtn">
+                    <span>✏️</span><span>Edit Profile</span>
+                </button>
+            </div>
+
+            <div class="profile-stats">
+                <div class="stat-item">
+                    <span class="stat-value">{{ total_students|default:0 }}</span>
+                    <span class="stat-label">Students</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">{{ total_quizzes|default:0 }}</span>
+                    <span class="stat-label">Quizzes</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">{{ total_attempts|default:0 }}</span>
+                    <span class="stat-label">Attempts</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">{{ avg_rating|default:'N/A' }}</span>
+                    <span class="stat-label">Rating</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Content -->
+        <form method="POST" action="{% url 'quiz:teacher_profile_edit' %}" id="profileForm">
+            {% csrf_token %}
+            <div class="profile-content">
+                <div class="profile-section">
+                    <h2 class="section-title"><span>👤</span><span>Personal Information</span></h2>
+                    <div class="form-group">
+                        <label for="first_name">First Name</label>
+                        <input type="text" id="first_name" name="first_name" value="{{ teacher.user.first_name }}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="last_name">Last Name</label>
+                        <input type="text" id="last_name" name="last_name" value="{{ teacher.user.last_name }}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" value="{{ teacher.user.email }}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone</label>
+                        <input type="tel" id="phone" name="phone" value="{{ teacher.phone|default:'' }}" disabled>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <h2 class="section-title"><span>💼</span><span>Professional Details</span></h2>
+                    <div class="form-group">
+                        <label for="qualification">Qualification</label>
+                        <input type="text" id="qualification" name="qualification" value="{{ teacher.qualification|default:'' }}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="specialization">Specialization</label>
+                        <input type="text" id="specialization" name="specialization" value="{{ teacher.specialization|default:'' }}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="experience">Experience</label>
+                        <input type="number" id="experience" name="experience" value="{{ teacher.years_experience|default:0 }}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="institution">Institution</label>
+                        <input type="text" id="institution" name="institution" value="{{ teacher.institution|default:'' }}" disabled>
+                    </div>
+                </div>
+
+                <div class="profile-section full-width">
+                    <h2 class="section-title"><span>📝</span><span>About Me</span></h2>
+                    <div class="form-group">
+                        <label for="bio">Bio</label>
+                        <textarea id="bio" name="bio" disabled>{{ teacher.bio|default:'' }}</textarea>
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <h2 class="section-title"><span>⚙️</span><span>Account Settings</span></h2>
+                    <div class="info-item">
+                        <span class="info-label">Status</span>
+                        <span class="info-value" style="color:{% if teacher.is_approved %}#22c55e{% else %}#f59e0b{% endif %}">
+                            {% if teacher.is_approved %}Active{% else %}Pending{% endif %}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Member Since</span>
+                        <span class="info-value">{{ teacher.created_at|date:"F Y" }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-buttons" id="actionButtons" style="display:none;">
+                <button type="button" class="btn btn-cancel" onclick="cancelEdit()">
+                    <span>✖️</span><span>Cancel</span>
+                </button>
+                <button type="submit" class="btn btn-save">
+                    <span>💾</span><span>Save Changes</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script src="{% static 'js/teacher_profile.js' %}"></script>
+</body>
+</html>

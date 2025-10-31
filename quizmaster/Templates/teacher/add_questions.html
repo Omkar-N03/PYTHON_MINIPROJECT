@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Questions - QUIZMASTER</title>
+    <link rel="stylesheet" href="add_questions.css">
+</head>
+<body>
+    <!-- Video Background with subtitles -->
+    <div class="video-background">
+        <video autoplay muted loop playsinline>
+            <source src="BG.mp4" type="video/mp4">
+            <track kind="captions" src="BG.vtt" srclang="en" label="English">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Success Message -->
+    <div class="success-message" id="successMessage">
+        ✅ Questions saved successfully!
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <button class="logo" tabindex="0" onclick="globalThis.location.href='teacher_dashboard.html'" onkeypress="if(event.key==='Enter')globalThis.location.href='teacher_dashboard.html'" aria-label="Go to dashboard">
+                <div class="logo-icon">
+                    <img src="Logo.png" alt="QUIZMASTER Logo">
+                </div>
+                <span>QUIZMASTER</span>
+            </button>
+            <a href="teacher_dashboard.html" class="back-btn">
+                <span>←</span>
+                <span>Back to Dashboard</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Header -->
+        <div class="page-header">
+            <h1 class="page-title">Add Questions</h1>
+            <p class="page-subtitle">Create engaging questions for your quiz</p>
+        </div>
+
+        <!-- Quiz Info -->
+        <div class="quiz-info">
+            <div class="quiz-info-item">
+                <span class="quiz-info-label">Quiz Title</span>
+                <span class="quiz-info-value" id="quizTitle">Introduction to Python</span>
+            </div>
+            <div class="quiz-info-item">
+                <span class="quiz-info-label">Subject</span>
+                <span class="quiz-info-value" id="quizSubject">Programming</span>
+            </div>
+            <div class="quiz-info-item">
+                <span class="quiz-info-label">Total Marks</span>
+                <span class="quiz-info-value" id="quizMarks">100</span>
+            </div>
+            <div class="quiz-info-item">
+                <span class="quiz-info-label">Duration</span>
+                <span class="quiz-info-value" id="quizDuration">30 minutes</span>
+            </div>
+        </div>
+
+        <!-- Questions Container -->
+        <div class="questions-container" id="questionsContainer">
+            <!-- Questions will be added dynamically -->
+        </div>
+
+        <!-- Add Question Button -->
+        <button class="add-question-btn" onclick="addQuestion()">
+            <span>➕</span>
+            <span>Add New Question</span>
+        </button>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-secondary" onclick="saveDraft()">
+                <span>💾</span>
+                <span>Save as Draft</span>
+            </button>
+            <button class="btn btn-primary" onclick="saveQuestions()">
+                <span>🚀</span>
+                <span>Save & Publish</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="add_questions.js"></script>
+</body>
+</html>

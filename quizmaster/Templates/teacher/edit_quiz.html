@@ -1,0 +1,388 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Quiz - {{ quiz.title }}</title>
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Video Background */
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            overflow: hidden;
+        }
+
+        .video-background video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            transform: translate(-50%, -50%);
+            object-fit: cover;
+        }
+
+        .video-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: -1;
+        }
+
+        .edit-quiz-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: rgba(102, 126, 234, 0.8);
+            border-radius: 6px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: rgba(85, 104, 211, 0.9);
+            transform: translateX(-5px);
+        }
+
+        .form-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .form-header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .form-header h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .form-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group label .required {
+            color: #dc3545;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        select.form-control {
+            cursor: pointer;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            flex: 1;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 768px) {
+            .edit-quiz-container {
+                padding: 10px;
+                margin: 20px auto;
+            }
+
+            .form-container {
+                padding: 25px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Video Background -->
+    <div class="video-background">
+        <video autoplay muted loop playsinline preload="metadata" aria-label="Background video">
+            <source src="{% static 'videos/BG.mp4' %}" type="video/mp4">
+            <track kind="captions" src="{% static 'videos/BG.vtt' %}" srclang="en" label="English">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+    <div class="video-overlay"></div>
+
+    <div class="edit-quiz-container">
+        <!-- Back Link -->
+        <a href="{% url 'quiz:manage_quizzes' %}" class="back-link">
+            ← Back to Manage Quizzes
+        </a>
+
+        <!-- Form Container -->
+        <div class="form-container">
+            <div class="form-header">
+                <h1>📝 Edit Quiz</h1>
+                <p>Update the details of your quiz</p>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Edit Form -->
+            <form method="POST" action="{% url 'quiz:edit_quiz' quiz.id %}">
+                {% csrf_token %}
+
+                <!-- Quiz Title -->
+                <div class="form-group">
+                    <label for="title">
+                        Quiz Title <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="title" 
+                        name="title" 
+                        class="form-control" 
+                        value="{{ quiz.title }}"
+                        required
+                        placeholder="Enter quiz title"
+                    >
+                </div>
+
+                <!-- Category and Difficulty -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="category">
+                            Category <span class="required">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="category" 
+                            name="category" 
+                            class="form-control" 
+                            value="{{ quiz.category }}"
+                            required
+                            placeholder="e.g., Mathematics, Science"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="difficulty">
+                            Difficulty <span class="required">*</span>
+                        </label>
+                        <select id="difficulty" name="difficulty" class="form-control" required>
+                            <option value="easy" {% if quiz.difficulty == 'easy' %}selected{% endif %}>Easy</option>
+                            <option value="medium" {% if quiz.difficulty == 'medium' %}selected{% endif %}>Medium</option>
+                            <option value="hard" {% if quiz.difficulty == 'hard' %}selected{% endif %}>Hard</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Total Marks and Time Limit -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="total_marks">
+                            Total Marks <span class="required">*</span>
+                        </label>
+                        <input 
+                            type="number" 
+                            id="total_marks" 
+                            name="total_marks" 
+                            class="form-control" 
+                            value="{{ quiz.total_marks }}"
+                            required
+                            min="1"
+                            placeholder="e.g., 100"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="time_limit">
+                            Time Limit (minutes) <span class="required">*</span>
+                        </label>
+                        <input 
+                            type="number" 
+                            id="time_limit" 
+                            name="time_limit" 
+                            class="form-control" 
+                            value="{{ quiz.time_limit }}"
+                            required
+                            min="1"
+                            placeholder="e.g., 60"
+                        >
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="form-group">
+                    <label for="description">
+                        Description
+                    </label>
+                    <textarea 
+                        id="description" 
+                        name="description" 
+                        class="form-control"
+                        placeholder="Enter quiz description (optional)"
+                    >{{ quiz.description }}</textarea>
+                    <div class="help-text">Provide a brief description of the quiz</div>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">
+                        💾 Save Changes
+                    </button>
+                    <a href="{% url 'quiz:manage_quizzes' %}" class="btn btn-secondary">
+                        ❌ Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

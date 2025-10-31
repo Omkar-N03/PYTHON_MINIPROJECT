@@ -1,0 +1,198 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Results - QUIZMASTER</title>
+    <link rel="stylesheet" href="{% static 'css/view_result.css' %}">
+</head>
+<body>
+    <!-- Video Background with subtitles -->
+    <div class="video-background">
+        <video autoplay muted loop playsinline>
+            <source src="{% static 'videos/BG.mp4' %}" type="video/mp4">
+            <track kind="captions" src="{% static 'videos/BG.vtt' %}" srclang="en" label="English">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <button class="logo" tabindex="0" onclick="globalThis.location.href='{% url 'accounts:teacher_dashboard' %}'" onkeypress="if(event.key==='Enter')globalThis.location.href='{% url 'accounts:teacher_dashboard' %}'" aria-label="Go to dashboard">
+                <div class="logo-icon">
+                    <img src="{% static 'images/Logo.png' %}" alt="QUIZMASTER Logo">
+                </div>
+                <span>QUIZMASTER</span>
+            </button>
+            <a href="{% url 'accounts:teacher_dashboard' %}" class="back-btn">
+                <span>←</span>
+                <span>Back to Dashboard</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Quiz Header -->
+        <div class="quiz-header">
+            <div class="quiz-title-section">
+                <h1 class="quiz-title" id="quizTitle">{{ quiz.title }}</h1>
+                <p class="quiz-subtitle">View detailed results and student performance analytics</p>
+            </div>
+            <div class="quiz-meta">
+                <div class="meta-item">
+                    <span>📚</span>
+                    <span id="quizSubject">{{ quiz.category|default:'General' }}</span>
+                </div>
+                <div class="meta-item">
+                    <span>📝</span>
+                    <span id="quizQuestions">{{ quiz.questions.count }} Questions</span>
+                </div>
+                <div class="meta-item">
+                    <span>🎯</span>
+                    <span id="quizMarks">{{ quiz.total_marks }} Marks</span>
+                </div>
+                <div class="meta-item">
+                    <span>⏱️</span>
+                    <span id="quizDuration">{{ quiz.time_limit }} minutes</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-value" id="totalAttempts">{{ total_attempts|default:0 }}</div>
+                <div class="stat-label">Total Attempts</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-value" id="avgScore">{{ avg_score|default:0|floatformat:0 }}%</div>
+                <div class="stat-label">Average Score</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">🏆</div>
+                <div class="stat-value" id="highestScore">{{ highest_score|default:0|floatformat:0 }}%</div>
+                <div class="stat-label">Highest Score</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value" id="passRate">{{ pass_rate|default:0|floatformat:0 }}%</div>
+                <div class="stat-label">Pass Rate</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">⏱️</div>
+                <div class="stat-value" id="avgTime">{{ avg_time|default:0 }} min</div>
+                <div class="stat-label">Avg. Time Taken</div>
+            </div>
+        </div>
+
+        <!-- Analytics Section -->
+        <div class="analytics-section">
+            <h2 class="section-title">
+                <span>📈</span>
+                <span>Grade Distribution</span>
+            </h2>
+            <div class="chart-container" id="chartContainer"></div>
+        </div>
+
+        <!-- Controls & Filters -->
+        <div class="controls-section">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" placeholder="Search by student name..." id="searchInput">
+            </div>
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="filterResults('all')">All</button>
+                <button class="filter-btn" onclick="filterResults('passed')">Passed</button>
+                <button class="filter-btn" onclick="filterResults('failed')">Failed</button>
+            </div>
+            <button class="export-btn" onclick="exportResults()">
+                <span>📥</span>
+                <span>Export CSV</span>
+            </button>
+        </div>
+
+        <!-- Results Table -->
+        <div class="results-container">
+            <h2 class="section-title" style="margin-bottom: 1.5rem;">
+                <span>📋</span>
+                <span>Student Submissions</span>
+            </h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Email</th>
+                            <th>Score</th>
+                            <th>Percentage</th>
+                            <th>Time Taken</th>
+                            <th>Submitted On</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody">
+                        {% for attempt in attempts %}
+                        <tr data-percentage="{{ attempt.percentage }}" data-student="{{ attempt.student.username }}" data-email="{{ attempt.student.email }}">
+                            <td>
+                                <div class="student-info">
+                                    <div class="student-avatar">👨‍🎓</div>
+                                    <span>{{ attempt.student.get_full_name|default:attempt.student.username }}</span>
+                                </div>
+                            </td>
+                            <td>{{ attempt.student.email }}</td>
+                            <td>{{ attempt.score }}/{{ attempt.total_marks }}</td>
+                            <td>
+                                <span class="score-badge {% if attempt.percentage >= 90 %}score-excellent{% elif attempt.percentage >= 75 %}score-good{% elif attempt.percentage >= 60 %}score-average{% else %}score-poor{% endif %}">
+                                    {{ attempt.percentage|floatformat:0 }}%
+                                </span>
+                            </td>
+                            <td>{{ attempt.time_spent|floatformat:0 }} min</td>
+                            <td>{{ attempt.end_time|date:"M d, Y h:i A" }}</td>
+                            <td>
+                                <button class="action-btn" onclick="globalThis.location.href='{% url 'accounts:view_attempt_details' attempt.id %}'">View Details</button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                No submissions yet
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pass Django data to JavaScript -->
+    <script>
+        const quizData = {
+            title: "{{ quiz.title|escapejs }}",
+            id: {{ quiz.id }},
+            passingMarks: {{ quiz.passing_marks|default:60 }},
+            totalMarks: {{ quiz.total_marks }}
+        };
+
+        const gradeDistribution = {{ grade_distribution|default:'[]'|safe }};
+    </script>
+    
+    <script src="{% static 'js/view_result.js' %}"></script>
+</body>
+</html>

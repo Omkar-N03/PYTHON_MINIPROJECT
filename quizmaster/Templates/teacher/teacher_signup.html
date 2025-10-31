@@ -1,0 +1,239 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Sign Up - QUIZMASTER</title>
+    <link rel="stylesheet" href="{% static 'css/signup.css' %}">
+</head>
+<body>
+    <div class="video-background">
+        <video autoplay muted loop playsinline>
+            <source src="{% static 'videos/BG.mp4' %}" type="video/mp4">
+            <track kind="captions" src="{% static 'videos/BG.vtt' %}" srclang="en" label="English">
+        </video>
+    </div>
+
+    <div class="animated-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="signup-container">
+        <div class="signup-card">
+            <div class="logo">
+                <img src="{% static 'images/Logo.png' %}" alt="QUIZMASTER Logo">
+                <h1>QUIZMASTER</h1>
+            </div>
+            
+            <h2>Teacher Sign Up</h2>
+            <p class="subtitle">Create your account to manage quizzes</p>
+
+            {% if messages %}
+                <div class="messages">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <form method="POST" id="signupForm">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" placeholder="Choose a username" required minlength="3">
+                    <span class="error-message" id="usernameError">Username must be at least 3 characters</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" placeholder="your.email@example.com" required>
+                    <span class="error-message" id="emailError">Please enter a valid email</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="password" name="password" placeholder="Create a strong password" required minlength="8">
+                        <button type="button" class="toggle-password" onclick="togglePassword('password')">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="password-strength" id="passwordStrength">
+                        <div class="strength-bar">
+                            <div class="strength-fill" id="strengthFill"></div>
+                        </div>
+                        <span class="strength-text" id="strengthText"></span>
+                    </div>
+                    <span class="error-message" id="passwordError">Password must be at least 8 characters</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="password2">Confirm Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="password2" name="password2" placeholder="Confirm your password" required>
+                        <button type="button" class="toggle-password" onclick="togglePassword('password2')">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                    <span class="error-message" id="confirmPasswordError">Passwords do not match</span>
+                </div>
+
+                <div class="form-group checkbox">
+                    <input type="checkbox" id="terms" name="terms" required>
+                    <label for="terms">
+                        I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-primary">Create Teacher Account</button>
+            </form>
+
+            <p class="login-link">
+                Already have an account? <a href="{% url 'quiz:teacher_login' %}">Sign In</a>
+            </p>
+
+            <p class="teacher-link">
+                Are you a student? <a href="{% url 'quiz:student_signup' %}">Sign up here</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Password Toggle
+        function togglePassword(fieldId) {
+            const field = document.getElementById(fieldId);
+            const button = field.nextElementSibling;
+            
+            if (field.type === 'password') {
+                field.type = 'text';
+                button.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>`;
+            } else {
+                field.type = 'password';
+                button.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>`;
+            }
+        }
+
+        // Password Strength Checker
+        const passwordInput = document.getElementById('password');
+        const strengthIndicator = document.getElementById('passwordStrength');
+        const strengthFill = document.getElementById('strengthFill');
+        const strengthText = document.getElementById('strengthText');
+
+        passwordInput.addEventListener('input', function() {
+            const password = this.value;
+            
+            if (password.length === 0) {
+                strengthIndicator.classList.remove('active');
+                return;
+            }
+
+            strengthIndicator.classList.add('active');
+            
+            let strength = 0;
+            if (password.length >= 8) strength++;
+            if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
+            if (password.match(/\d/)) strength++;
+            if (password.match(/[^a-zA-Z\d]/)) strength++;
+
+            strengthFill.className = 'strength-fill';
+            
+            if (strength <= 1) {
+                strengthFill.classList.add('weak');
+                strengthText.textContent = 'Weak password';
+                strengthText.style.color = '#ef4444';
+            } else if (strength === 2 || strength === 3) {
+                strengthFill.classList.add('medium');
+                strengthText.textContent = 'Medium password';
+                strengthText.style.color = '#f59e0b';
+            } else {
+                strengthFill.classList.add('strong');
+                strengthText.textContent = 'Strong password';
+                strengthText.style.color = '#22c55e';
+            }
+        });
+
+        // Form Validation
+        const form = document.getElementById('signupForm');
+        const password2Input = document.getElementById('password2');
+        const usernameInput = document.getElementById('username');
+
+        form.addEventListener('submit', function(e) {
+            let hasErrors = false;
+
+            // Check password match
+            const passwordsMatch = passwordInput.value === password2Input.value;
+            if (passwordsMatch) {
+                document.getElementById('confirmPasswordError').classList.remove('active');
+            } else {
+                e.preventDefault();
+                document.getElementById('confirmPasswordError').classList.add('active');
+                hasErrors = true;
+            }
+
+            // Check password length
+            const passwordLongEnough = passwordInput.value.length >= 8;
+            if (passwordLongEnough) {
+                document.getElementById('passwordError').classList.remove('active');
+            } else {
+                e.preventDefault();
+                document.getElementById('passwordError').classList.add('active');
+                hasErrors = true;
+            }
+
+            // Check username length (✅ Fixed: Removed negated condition)
+            const usernameLongEnough = usernameInput.value.length >= 3;
+            if (usernameLongEnough) {
+                document.getElementById('usernameError').classList.remove('active');
+            } else {
+                e.preventDefault();
+                document.getElementById('usernameError').classList.add('active');
+                hasErrors = true;
+            }
+
+            if (hasErrors) {
+                console.log('Form validation failed');
+            }
+        });
+
+        // Real-time password match validation
+        password2Input.addEventListener('input', function() {
+            const errorElement = document.getElementById('confirmPasswordError');
+            const passwordsMatch = this.value === passwordInput.value;
+            
+            if (this.value && passwordsMatch) {
+                errorElement.classList.remove('active');
+            } else if (this.value) {
+                errorElement.classList.add('active');
+            }
+        });
+
+        // Real-time username validation
+        usernameInput.addEventListener('input', function() {
+            const errorElement = document.getElementById('usernameError');
+            const usernameLongEnough = this.value.length >= 3;
+            
+            if (usernameLongEnough || this.value.length === 0) {
+                errorElement.classList.remove('active');
+            } else {
+                errorElement.classList.add('active');
+            }
+        });
+    </script>
+</body>
+</html>

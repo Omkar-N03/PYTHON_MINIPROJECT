@@ -1,0 +1,316 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="QUIZMASTER Teacher Dashboard - Manage quizzes, view analytics, and track student performance">
+    <meta name="author" content="QUIZMASTER">
+    <title>Teacher Dashboard - QUIZMASTER</title>
+    <link rel="stylesheet" href="{% static 'css/teacher_dashboard.css' %}">
+    <link rel="icon" type="image/png" href="{% static 'images/Logo.png' %}">
+</head>
+<body>
+    <!-- Video Background -->
+    <div class="video-background">
+        <video autoplay muted loop playsinline aria-label="Background animation">
+            <source src="{% static 'videos/BG.mp4' %}" type="video/mp4">
+            <track kind="captions" src="{% static 'videos/BG.vtt' %}" srclang="en" label="English">
+        </video>
+    </div>
+
+    <!-- Animated Background Orbs -->
+    <div class="animated-bg" aria-hidden="true">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Welcome Overlay -->
+    <div class="welcome-overlay" id="welcomeOverlay">
+        <div class="welcome-content">
+            <div class="welcome-icon" aria-hidden="true">👨‍🏫</div>
+            <h1 class="welcome-title">Welcome, {{ request.user.get_full_name|default:request.user.username }}!</h1>
+            <p class="welcome-subtitle">Ready to inspire minds and create amazing quizzes today?</p>
+            <button class="welcome-btn" id="enterDashboardBtn" aria-label="Enter Dashboard">
+                Enter Dashboard
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar" role="navigation">
+        <div class="navbar-content">
+            <a href="{% url 'quiz:teacher_dashboard' %}" class="logo" aria-label="QUIZMASTER Dashboard">
+                <div class="logo-icon">
+                    <img src="{% static 'images/Logo.png' %}" alt="QUIZMASTER Logo">
+                </div>
+                <span>QUIZMASTER</span>
+            </a>
+
+            <div class="nav-right">
+                <a href="{% url 'quiz:teacher_dashboard' %}" class="nav-item active" aria-current="page">Dashboard</a>
+                <a href="{% url 'quiz:manage_quizzes' %}" class="nav-item">My Quizzes</a>
+                <a href="#analytics" class="nav-item">Analytics</a>
+                <a href="{% url 'quiz:teacher_profile' %}" class="nav-item">Settings</a>
+                <a href="{% url 'quiz:logout' %}" class="nav-item">Logout</a>
+                <div class="user-profile">
+                    <div class="user-avatar" aria-hidden="true">👨‍🏫</div>
+                    <span>{{ request.user.username }}</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" role="main">
+        <!-- Welcome Section -->
+        <section class="welcome-section">
+            <div class="welcome-message">
+                <h1>Welcome back, <span>{{ request.user.get_full_name|default:request.user.username }}</span>! 👋</h1>
+                <p>Here's what's happening with your quizzes today.</p>
+            </div>
+        </section>
+
+        <!-- Summary Statistics Cards -->
+        <section class="summary-cards" aria-label="Dashboard statistics">
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">📝</div>
+                <div class="card-content">
+                    <h3>Total Quizzes</h3>
+                    <div class="card-value">{{ total_quizzes|default:0 }}</div>
+                    <div class="card-change">Active this month</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">👥</div>
+                <div class="card-content">
+                    <h3>Total Students</h3>
+                    <div class="card-value">{{ total_students|default:0 }}</div>
+                    <div class="card-change">Enrolled students</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">✅</div>
+                <div class="card-content">
+                    <h3>Completed</h3>
+                    <div class="card-value">{{ total_attempts|default:0 }}</div>
+                    <div class="card-change">Quiz attempts</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">📊</div>
+                <div class="card-content">
+                    <h3>Active Quizzes</h3>
+                    <div class="card-value">{{ active_quizzes|default:0 }}</div>
+                    <div class="card-change">Currently published</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Action Section -->
+        <section class="action-section">
+            <h2 class="section-title">Recent Quizzes</h2>
+            <a href="{% url 'quiz:create_quiz' %}" class="create-quiz-btn" aria-label="Create new quiz">
+                <span aria-hidden="true">➕</span>
+                <span>Create New Quiz</span>
+            </a>
+        </section>
+
+        <!-- Quizzes Table -->
+        <section class="quizzes-table-container">
+            <div class="table-header">
+                <h3 class="section-title">All Quizzes</h3>
+                <div class="search-box">
+                    <span class="search-icon" aria-hidden="true">🔍</span>
+                    <input type="text" placeholder="Search quizzes..." id="searchInput" 
+                           aria-label="Search quizzes" autocomplete="off">
+                </div>
+            </div>
+            
+            <div class="table-wrapper">
+                <table role="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Quiz Name</th>
+                            <th scope="col">Category</th>
+                            <th scope="col">Questions</th>
+                            <th scope="col">Students</th>
+                            <th scope="col">Total Marks</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="quizzesTableBody">
+                        {% for quiz in quizzes %}
+                        <tr data-quiz-id="{{ quiz.id }}">
+                            <td data-label="Quiz Name">{{ quiz.title }}</td>
+                            <td data-label="Category">{{ quiz.category|default:'General' }}</td>
+                            <td data-label="Questions">{{ quiz.questions.count }}</td>
+                            <td data-label="Students">{{ quiz.attempts.count }}</td>
+                            <td data-label="Total Marks">{{ quiz.total_marks|default:0 }}</td>
+                            <td data-label="Status">
+                                <span class="status-badge status-{{ quiz.status|lower|default:'active' }}">
+                                    {{ quiz.status|title|default:'Active' }}
+                                </span>
+                            </td>
+                            <td data-label="Actions">
+                                <a href="{% url 'quiz:edit_quiz' quiz.id %}" class="action-btn" 
+                                   aria-label="Edit {{ quiz.title }}">Edit</a>
+                                <a href="{% url 'quiz:manage_questions' quiz.id %}" class="action-btn" 
+                                   aria-label="View {{ quiz.title }} questions">View</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="empty-state">
+                                📝 No quizzes yet. Create your first quiz to get started!
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Analytics Chart -->
+        <section class="analytics-section" id="analytics">
+            <h2 class="section-title">Student Performance Analytics</h2>
+            <figure class="chart-container" id="chartContainer">
+                <figcaption class="sr-only">Student grade distribution bar chart</figcaption>
+                <div style="text-align: center; color: #94a3b8; padding: 2rem;" id="chartPlaceholder">
+                    Loading analytics...
+                </div>
+            </figure>
+        </section>
+    </main>
+
+    <!-- ✅ CRITICAL: Pass Django data to JavaScript BEFORE loading external JS -->
+    <script>
+        // Global data from Django backend
+        const gradeDistribution = {{ grade_distribution|safe }};
+        const teacherUsername = "{{ request.user.username }}";
+        const totalAttempts = {{ total_attempts|default:0 }};
+        
+        console.log('✅ Django data loaded:', {
+            gradeDistribution: gradeDistribution,
+            teacher: teacherUsername,
+            totalAttempts: totalAttempts
+        });
+        
+        // Validate data
+        if (!gradeDistribution || !Array.isArray(gradeDistribution)) {
+            console.error('❌ Invalid grade distribution data:', gradeDistribution);
+        } else {
+            console.log('✅ Grade distribution is valid with', gradeDistribution.length, 'ranges');
+        }
+    </script>
+
+    <!-- Load External JavaScript -->
+    <script src="{% static 'js/teacher_dashboard.js' %}"></script>
+    
+    <!-- Inline Fallback Handler -->
+    <script>
+        // Guaranteed button handler that works even if external JS fails
+        (function() {
+            'use strict';
+            
+            function setupWelcomeOverlay() {
+                const btn = document.getElementById('enterDashboardBtn');
+                const overlay = document.getElementById('welcomeOverlay');
+                
+                if (!btn || !overlay) {
+                    console.warn('⚠️ Welcome overlay elements not found');
+                    return;
+                }
+                
+                // Remove any existing listeners by cloning
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                
+                // Add click handler
+                newBtn.addEventListener('click', function() {
+                    console.log('🎯 Enter Dashboard button clicked');
+                    overlay.classList.add('hidden');
+                    
+                    // Remove from DOM after animation
+                    setTimeout(function() {
+                        overlay.style.display = 'none';
+                        document.body.style.overflow = 'visible';
+                    }, 650);
+                });
+                
+                // Auto-hide after 3 seconds
+                setTimeout(function() {
+                    if (overlay && !overlay.classList.contains('hidden')) {
+                        console.log('⏰ Auto-hiding welcome overlay after 3s');
+                        overlay.classList.add('hidden');
+                        setTimeout(function() {
+                            overlay.style.display = 'none';
+                        }, 650);
+                    }
+                }, 3000);
+                
+                console.log('✅ Welcome overlay handlers ready');
+            }
+            
+            function setupSearchFilter() {
+                const searchInput = document.getElementById('searchInput');
+                const tableBody = document.getElementById('quizzesTableBody');
+                
+                if (!searchInput || !tableBody) return;
+                
+                searchInput.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value.toLowerCase().trim();
+                    const rows = tableBody.querySelectorAll('tr[data-quiz-id]');
+                    
+                    let visibleCount = 0;
+                    
+                    rows.forEach(function(row) {
+                        const text = row.textContent.toLowerCase();
+                        const shouldShow = text.includes(searchTerm);
+                        
+                        row.style.display = shouldShow ? '' : 'none';
+                        if (shouldShow) visibleCount++;
+                    });
+                    
+                    console.log('🔍 Search:', searchTerm, '- Visible:', visibleCount);
+                });
+                
+                console.log('✅ Search filter ready');
+            }
+            
+            // Initialize everything when DOM is ready
+            function initialize() {
+                setupWelcomeOverlay();
+                setupSearchFilter();
+                console.log('✅ All fallback handlers initialized');
+            }
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initialize);
+            } else {
+                initialize();
+            }
+        })();
+    </script>
+    
+    <!-- No JavaScript Fallback -->
+    <noscript>
+        <style>
+            .welcome-overlay { display: none !important; }
+            body { overflow: visible !important; }
+            .chart-container::before {
+                content: 'JavaScript is required to view analytics charts.';
+                display: block;
+                text-align: center;
+                padding: 2rem;
+                color: #94a3b8;
+            }
+        </style>
+    </noscript>
+</body>
+</html>
