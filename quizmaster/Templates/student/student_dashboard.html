@@ -1,0 +1,225 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Student Dashboard - QUIZMASTER</title>
+    <link rel="stylesheet" href="{% static 'css/student_dashboard.css' %}">
+</head>
+<body>
+    <!-- Video Background with subtitles -->
+    <div class="video-background">
+        <video autoplay muted loop playsinline aria-label="Background animation">
+            <source src="{% static 'videos/STUDENT.mp4' %}" type="video/mp4">
+            <track kind="captions" src="{% static 'videos/STUDENT.vtt' %}" srclang="en" label="English captions">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Welcome Overlay -->
+    <div class="welcome-overlay" id="welcomeOverlay">
+        <div class="welcome-content">
+            <div class="welcome-icon">👨‍🎓</div>
+            <h1 class="welcome-title">Welcome, {{ user.get_full_name|default:user.username }}!</h1>
+            <p class="welcome-subtitle">Ready to challenge yourself and achieve excellence?</p>
+            <button class="welcome-btn" onclick="closeWelcome()" type="button">Start Learning</button>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <!-- ✅ Logo redirects to student_profile -->
+            <a href="{% url 'quiz:student_profile' %}" class="logo" aria-label="Go to profile">
+                <div class="logo-icon">
+                    <img src="{% static 'images/Logo.png' %}" alt="QUIZMASTER Logo">
+                </div>
+                <span>QUIZMASTER</span>
+            </a>
+            
+            <div class="nav-right">
+                <a href="{% url 'quiz:student_dashboard' %}" class="nav-item">Dashboard</a>
+                <a href="#quizzes" class="nav-item">Available Quizzes</a>
+                <a href="#results" class="nav-item">My Results</a>
+                <a href="{% url 'home' %}" class="nav-item">Home</a>
+                
+                <!-- ✅ Username redirects to student_profile -->
+                <a href="{% url 'quiz:student_profile' %}" class="nav-item user-profile-link" aria-label="Go to profile">
+                    <div class="user-avatar">👨‍🎓</div>
+                    <span>{{ user.username }}</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Welcome Section -->
+        <section class="welcome-section">
+            <div class="welcome-message">
+                <h1>Welcome back, <span>{{ user.first_name|default:user.username }}</span>! 🎯</h1>
+                <p>Continue your learning journey and ace your quizzes today!</p>
+            </div>
+        </section>
+
+        <!-- Stats Cards -->
+        <section class="stats-cards">
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value">{{ total_attempts|default:0 }}</div>
+                <div class="stat-label">Quizzes Taken</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-value">{{ avg_score|default:0 }}%</div>
+                <div class="stat-label">Average Score</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-value">{{ completed_attempts|default:0 }}</div>
+                <div class="stat-label">Completed</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">🔥</div>
+                <div class="stat-value">{{ streak|default:0 }}</div>
+                <div class="stat-label">Day Streak</div>
+            </div>
+        </section>
+
+        <!-- Available Quizzes Section -->
+        <section id="quizzes" class="quizzes-section">
+            <div class="section-header">
+                <h2 class="section-title">📚 Available Quizzes</h2>
+                <p class="section-subtitle">Start a new quiz and test your knowledge</p>
+            </div>
+
+            <div class="quizzes-grid">
+                {% for quiz in available_quizzes %}
+                <div class="quiz-card">
+                    <div class="quiz-header">
+                        <span class="quiz-badge {% if quiz.difficulty == 'easy' %}badge-easy{% elif quiz.difficulty == 'medium' %}badge-medium{% else %}badge-hard{% endif %}">
+                            {{ quiz.get_difficulty_display|default:'Medium' }}
+                        </span>
+                    </div>
+                    <h3 class="quiz-title">{{ quiz.title }}</h3>
+                    <div class="quiz-meta">
+                        <div class="quiz-meta-item">
+                            <span>📝</span>
+                            <span>{{ quiz.question_count }} Questions</span>
+                        </div>
+                        <div class="quiz-meta-item">
+                            <span>⏱️</span>
+                            <span>{{ quiz.time_limit }} min</span>
+                        </div>
+                        <div class="quiz-meta-item">
+                            <span>🎯</span>
+                            <span>{{ quiz.total_marks }} Marks</span>
+                        </div>
+                    </div>
+                    <p class="quiz-description">{{ quiz.description|default:"Test your knowledge with this comprehensive quiz"|truncatewords:20 }}</p>
+                    <div class="quiz-actions">
+                        <a href="{% url 'quiz:take_quiz' quiz.id %}" class="btn btn-primary">
+                            <span>▶️</span>
+                            <span>Start Quiz</span>
+                        </a>
+                        <button class="btn btn-secondary" onclick="viewQuizDetails({{ quiz.id }})" type="button" aria-label="View quiz details">
+                            <span>ℹ️</span>
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="empty-state">
+                    <p>✨ No quizzes available at the moment. Check back later!</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- My Results Section -->
+        <section id="results" class="results-section">
+            <div class="section-header">
+                <h2 class="section-title">📈 My Results</h2>
+                <p class="section-subtitle">Track your performance and progress</p>
+            </div>
+
+            <div class="results-container">
+                <div class="results-header">
+                    <h3 style="color: #fff; font-size: 20px; margin: 0;">Recent Attempts</h3>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all" type="button">All</button>
+                        <button class="filter-btn" data-filter="passed" type="button">Passed</button>
+                        <button class="filter-btn" data-filter="failed" type="button">Failed</button>
+                    </div>
+                </div>
+
+                <div class="results-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Quiz Name</th>
+                                <th>Subject</th>
+                                <th>Score</th>
+                                <th>Date</th>
+                                <th>Time Taken</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <!-- ✅ Uses recent_attempts context variable -->
+                        <tbody id="resultsTableBody">
+                            {% for attempt in recent_attempts %}
+                            {% if attempt.status == 'completed' %}
+                            <tr data-status="{% if attempt.is_passed %}passed{% else %}failed{% endif %}">
+                                <td>{{ attempt.quiz.title }}</td>
+                                <td>{{ attempt.quiz.category|default:'General' }}</td>
+                                <td>
+                                    <span class="score-badge {% if attempt.percentage >= 90 %}score-excellent{% elif attempt.percentage >= 75 %}score-good{% elif attempt.percentage >= 60 %}score-average{% else %}score-poor{% endif %}">
+                                        {{ attempt.percentage|floatformat:1|default:0 }}%
+                                    </span>
+                                </td>
+                                <td>{{ attempt.end_time|date:"M d, Y"|default:"N/A" }}</td>
+                                <td>{{ attempt.time_spent_formatted|default:'N/A' }}</td>
+                                <td>
+                                    <a href="{% url 'quiz:quiz_result' attempt.id %}" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px; text-decoration: none; display: inline-block;">
+                                        View Details
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 2rem; color: #a0aec0;">
+                                    ✨ No results yet. Start a quiz to see your performance!
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Pass Django data to JavaScript -->
+    <script>
+        const djangoData = {
+            userName: "{{ user.get_full_name|default:user.username }}",
+            firstName: "{{ user.first_name|default:user.username }}",
+            logoutUrl: "{% url 'quiz:logout' %}",
+            profileUrl: "{% url 'quiz:student_profile' }}"
+        };
+    </script>
+    <script src="{% static 'js/student_dashboard.js' %}"></script>
+</body>
+</html>

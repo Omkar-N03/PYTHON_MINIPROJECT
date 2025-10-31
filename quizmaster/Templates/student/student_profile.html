@@ -1,0 +1,186 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Profile - QUIZMASTER</title>
+    <link rel="stylesheet" href="{% static 'css/student_dashboard.css' %}">
+</head>
+<body>
+    <!-- Video Background -->
+    <div class="video-background">
+        <video autoplay muted loop playsinline aria-label="Background animation">
+            <source src="{% static 'videos/STUDENT.mp4' %}" type="video/mp4">
+            <track kind="captions" src="{% static 'videos/STUDENT.vtt' %}" srclang="en" label="English captions">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <button class="logo" onclick="location.href='{% url 'quiz:student_dashboard' %}'" aria-label="Go to dashboard">
+                <div class="logo-icon">
+                    <img src="{% static 'images/Logo.png' %}" alt="QUIZMASTER Logo">
+                </div>
+                <span>QUIZMASTER</span>
+            </button>
+            <div class="nav-right">
+                <a href="{% url 'quiz:student_dashboard' %}" class="nav-item">Dashboard</a>
+                <a href="{% url 'quiz:student_profile' %}" class="nav-item">Profile</a>
+                <a href="{% url 'home' %}" class="nav-item">Home</a>
+                <a href="{% url 'quiz:logout' %}" class="nav-item">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Profile Header -->
+        <section class="welcome-section">
+            <div class="welcome-message">
+                <h1>👨‍🎓 Student Profile</h1>
+                <p>Manage your account information and track your progress</p>
+            </div>
+        </section>
+
+        <!-- Profile Information -->
+        <div class="results-container" style="margin-bottom: 2rem;">
+            <div class="results-header">
+                <h3 style="color: #fff; font-size: 20px;">Personal Information</h3>
+                <button class="btn btn-primary" onclick="toggleEditMode()" style="padding: 10px 20px;" aria-label="Edit profile">
+                    Edit Profile
+                </button>
+            </div>
+            
+            <div style="padding: 1rem 0;">
+                <form id="profileForm" method="POST" action="{% url 'quiz:student_profile_edit' %}">
+                    {% csrf_token %}
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                        <div>
+                            <label for="username" style="display: block; color: var(--text-muted); margin-bottom: 0.5rem; font-size: 14px;">Username</label>
+                            <input id="username" type="text" value="{{ user.username }}" disabled style="width: 100%; padding: 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; color: #fff; font-size: 14px;">
+                        </div>
+                        
+                        <div>
+                            <label for="email" style="display: block; color: var(--text-muted); margin-bottom: 0.5rem; font-size: 14px;">Email</label>
+                            <input id="email" type="email" name="email" value="{{ user.email }}" disabled class="profile-input" style="width: 100%; padding: 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; color: #fff; font-size: 14px;">
+                        </div>
+                        
+                        <div>
+                            <label for="first_name" style="display: block; color: var(--text-muted); margin-bottom: 0.5rem; font-size: 14px;">First Name</label>
+                            <input id="first_name" type="text" name="first_name" value="{{ user.first_name }}" disabled class="profile-input" style="width: 100%; padding: 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; color: #fff; font-size: 14px;">
+                        </div>
+                        
+                        <div>
+                            <label for="last_name" style="display: block; color: var(--text-muted); margin-bottom: 0.5rem; font-size: 14px;">Last Name</label>
+                            <input id="last_name" type="text" name="last_name" value="{{ user.last_name }}" disabled class="profile-input" style="width: 100%; padding: 12px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; color: #fff; font-size: 14px;">
+                        </div>
+                    </div>
+                    
+                    <div id="saveButtons" style="display: none; margin-top: 1.5rem; gap: 10px;">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <button type="button" class="btn btn-secondary" onclick="cancelEdit()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <section class="stats-cards">
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value">{{ total_quizzes }}</div>
+                <div class="stat-label">Total Attempts</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-value">{{ completed_quizzes }}</div>
+                <div class="stat-label">Completed Quizzes</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-value">{{ avg_score }}%</div>
+                <div class="stat-label">Average Score</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-value">{{ completed_quizzes }}</div>
+                <div class="stat-label">Goals Achieved</div>
+            </div>
+        </section>
+
+        <!-- Recent Activity -->
+        <section>
+            <div class="section-header">
+                <h2 class="section-title">📈 Recent Activity</h2>
+                <p class="section-subtitle">Your latest quiz attempts</p>
+            </div>
+
+            <div class="results-container">
+                <div class="results-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Quiz Name</th>
+                                <th>Score</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attempt in recent_attempts %}
+                            <tr>
+                                <td>{{ attempt.quiz.title }}</td>
+                                <td>
+                                    <span class="score-badge {% if attempt.score >= 90 %}score-excellent{% elif attempt.score >= 75 %}score-good{% elif attempt.score >= 60 %}score-average{% else %}score-poor{% endif %}">
+                                        {{ attempt.score|default:0 }}%
+                                    </span>
+                                </td>
+                                <td>{{ attempt.start_time|date:"M d, Y" }}</td>
+                                <td>{{ attempt.status|title }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" style="text-align: center; padding: 2rem;">
+                                    No activity yet. Start taking quizzes!
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        function toggleEditMode() {
+            const inputs = document.querySelectorAll('.profile-input');
+            const saveButtons = document.getElementById('saveButtons');
+            
+            // Use for...of instead of forEach for better performance
+            for (const input of inputs) {
+                input.disabled = !input.disabled;
+            }
+            
+            saveButtons.style.display = saveButtons.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        function cancelEdit() {
+            location.reload();
+        }
+    </script>
+</body>
+</html>

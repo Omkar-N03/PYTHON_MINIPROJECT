@@ -1,0 +1,151 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attempt Quiz - QUIZMASTER</title>
+    <link rel="stylesheet" href="{% static 'css/test_quiz.css' %}">
+</head>
+<body>
+    <!-- Video Background with subtitles track -->
+    <div class="video-background">
+        <video autoplay muted loop playsinline>
+            <source src="{% static 'videos/BG.mp4' %}" type="video/mp4">
+            <track kind="captions" src="{% static 'videos/BG.vtt' %}" srclang="en" label="English">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Submit Modal -->
+    <div class="modal" id="submitModal">
+        <div class="modal-content">
+            <div class="modal-icon">⚠️</div>
+            <h2 class="modal-title">Submit Quiz?</h2>
+            <p class="modal-message">
+                Are you sure you want to submit? Once submitted, you cannot make any changes.
+            </p>
+            <div class="modal-stats">
+                <div class="modal-stat">
+                    <div class="modal-stat-value" id="modalAnswered">0</div>
+                    <div class="modal-stat-label">Answered</div>
+                </div>
+                <div class="modal-stat">
+                    <div class="modal-stat-value" id="modalUnanswered">0</div>
+                    <div class="modal-stat-label">Unanswered</div>
+                </div>
+                <div class="modal-stat">
+                    <div class="modal-stat-value" id="modalFlagged">0</div>
+                    <div class="modal-stat-label">Flagged</div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn btn-cancel" onclick="closeSubmitModal()">Review Again</button>
+                <button class="modal-btn btn-confirm" onclick="confirmSubmit()">Submit Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz Header -->
+    <header class="quiz-header">
+        <div class="header-content">
+            <div class="quiz-info-header">
+                <h1 class="quiz-title-header" id="quizTitle">Loading...</h1>
+            </div>
+            <div class="timer-container" id="timerContainer">
+                <span class="timer-icon">⏱️</span>
+                <span class="timer-text" id="timer">00:00</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Progress Bar -->
+    <div class="progress-section">
+        <div class="progress-content">
+            <div class="progress-info">
+                <span class="progress-label">Progress</span>
+                <span class="progress-label">
+                    Question <span class="progress-count" id="progressCount">0 of 0</span>
+                </span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Question Container -->
+        <div class="question-container">
+            <div class="question-header">
+                <span class="question-number" id="questionNumber">Question</span>
+                <span class="question-marks" id="questionMarks">0 Marks</span>
+            </div>
+
+            <div class="question-text" id="questionText">
+                Loading question...
+            </div>
+
+            <div class="options-container" id="optionsContainer">
+                <!-- Options will be populated dynamically -->
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn btn-previous" id="btnPrevious" onclick="previousQuestion()" disabled>
+                    <span>←</span>
+                    <span>Previous</span>
+                </button>
+                <button class="btn-flag" id="btnFlag" onclick="toggleFlag()">🚩</button>
+                <button class="nav-btn btn-next" id="btnNext" onclick="nextQuestion()">
+                    <span>Next</span>
+                    <span>→</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">
+                    <span>📋</span>
+                    <span>Question Navigator</span>
+                </h3>
+                <div class="question-grid" id="questionGrid">
+                    <!-- Question dots will be populated dynamically -->
+                </div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-box" style="background: rgba(34, 197, 94, 0.2); border: 2px solid #22c55e;"></div>
+                        <span>Answered</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-box" style="background: rgba(59, 130, 246, 0.1); border: 2px solid rgba(59, 130, 246, 0.3);"></div>
+                        <span>Not Answered</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-box" style="background: rgba(251, 191, 36, 0.2); border: 2px solid #fbbf24;"></div>
+                        <span>Flagged</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <button class="submit-btn" onclick="openSubmitModal()">
+                    <span>✅</span>
+                    <span>Submit Quiz</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'js/test_quiz.js' %}"></script>
+</body>
+</html>
