@@ -1,0 +1,749 @@
+/* ==========================================
+   QUIZMASTER - AUTHENTICATION STYLES
+   Modern Signup/Login Pages with Glassmorphism
+   Version: 2.0 | Optimized for 2025
+   ========================================== */
+
+/* ==========================================
+   CSS VARIABLES & CUSTOM PROPERTIES
+   ========================================== */
+:root {
+    /* Color Palette */
+    --primary-blue: #3b82f6;
+    --primary-cyan: #06b6d4;
+    --primary-purple: #8b5cf6;
+    --primary-pink: #ec4899;
+    
+    /* Dark Theme Colors */
+    --dark-bg: #0a0814;
+    --dark-card: rgba(20, 15, 40, 0.96);
+    --dark-overlay: rgba(15, 23, 42, 0.7);
+    
+    /* Text Colors */
+    --text-primary: #e2e8f0;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --text-disabled: #64748b;
+    
+    /* Status Colors */
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --info: #3b82f6;
+    
+    /* Spacing Scale */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+    
+    /* Border Radius Scale */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-2xl: 24px;
+    
+    /* Shadows */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 40px rgba(59, 130, 246, 0.3);
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================
+   GLOBAL RESET & BASE STYLES
+   ========================================== */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #0a0814 0%, #1a1128 25%, #2d1b4e 50%, #1a1128 75%, #0a0814 100%);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+    position: relative;
+    overflow-x: hidden;
+    padding: var(--spacing-xl) var(--spacing-md);
+}
+
+@keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* ==========================================
+   VIDEO BACKGROUND - GPU OPTIMIZED
+   ========================================== */
+.video-background {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.video-background video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    transform: translate(-50%, -50%);
+    object-fit: cover;
+    opacity: 0.08;
+    filter: blur(1px) brightness(0.7);
+    will-change: transform;
+}
+
+.video-background::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 0%, rgba(10, 8, 20, 0.9) 100%);
+}
+
+/* ==========================================
+   ANIMATED BACKGROUND EFFECTS
+   ========================================== */
+.animated-bg {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.25;
+    animation: float-orb 30s ease-in-out infinite;
+    will-change: transform;
+}
+
+.orb-1 {
+    width: min(500px, 40vw);
+    height: min(500px, 40vw);
+    background: radial-gradient(circle, var(--primary-blue) 0%, var(--primary-cyan) 40%, transparent 100%);
+    top: -15%;
+    left: -15%;
+    animation-delay: 0s;
+}
+
+.orb-2 {
+    width: min(450px, 35vw);
+    height: min(450px, 35vw);
+    background: radial-gradient(circle, var(--primary-purple) 0%, var(--primary-pink) 40%, transparent 100%);
+    bottom: -15%;
+    right: -15%;
+    animation-delay: -10s;
+}
+
+.orb-3 {
+    width: min(400px, 30vw);
+    height: min(400px, 30vw);
+    background: radial-gradient(circle, var(--primary-cyan) 0%, var(--primary-blue) 40%, transparent 100%);
+    top: 35%;
+    right: 5%;
+    animation-delay: -20s;
+}
+
+@keyframes float-orb {
+    0%, 100% {
+        transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+    }
+    25% {
+        transform: translate3d(60px, -90px, 0) scale(1.2) rotate(90deg);
+    }
+    50% {
+        transform: translate3d(-50px, -50px, 0) scale(0.85) rotate(180deg);
+    }
+    75% {
+        transform: translate3d(-60px, 60px, 0) scale(1.15) rotate(270deg);
+    }
+}
+
+/* ==========================================
+   MAIN CONTAINERS
+   ========================================== */
+.signup-container,
+.login-container {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 480px;
+}
+
+.login-container {
+    max-width: 440px;
+}
+
+.signup-card,
+.login-card {
+    background: var(--dark-card);
+    backdrop-filter: blur(30px) saturate(150%);
+    -webkit-backdrop-filter: blur(30px) saturate(150%);
+    border-radius: var(--radius-2xl);
+    padding: clamp(32px, 5vw, 40px) clamp(28px, 5vw, 36px);
+    box-shadow: 
+        var(--shadow-lg),
+        0 0 0 1px rgba(59, 130, 246, 0.2),
+        0 0 120px rgba(59, 130, 246, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+    transition: all var(--transition-base);
+}
+
+.signup-card:hover,
+.login-card:hover {
+    box-shadow: 
+        0 12px 50px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(59, 130, 246, 0.3),
+        0 0 140px rgba(59, 130, 246, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    transform: translateY(-2px);
+}
+
+@keyframes slideUpFade {
+    from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ==========================================
+   LOGO & BRANDING
+   ========================================== */
+.logo {
+    text-align: center;
+    margin-bottom: clamp(24px, 4vh, 28px);
+    animation: fadeIn 1s ease-out both 0.2s;
+}
+
+.logo img {
+    width: clamp(60px, 12vw, 70px);
+    height: clamp(60px, 12vw, 70px);
+    margin-bottom: 14px;
+    filter: drop-shadow(0 8px 28px rgba(59, 130, 246, 0.6));
+    animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        filter: drop-shadow(0 8px 28px rgba(59, 130, 246, 0.6));
+        transform: scale(1);
+    }
+    50% {
+        filter: drop-shadow(0 12px 36px rgba(59, 130, 246, 0.8));
+        transform: scale(1.05);
+    }
+}
+
+.logo h1 {
+    font-size: clamp(24px, 5vw, 28px);
+    font-weight: 800;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-cyan) 50%, var(--primary-purple) 100%);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradient-shift 4s ease infinite;
+}
+
+@keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================
+   TYPOGRAPHY
+   ========================================== */
+h2 {
+    color: var(--text-primary);
+    font-size: clamp(20px, 4vw, 22px);
+    font-weight: 700;
+    margin-bottom: var(--spacing-sm);
+    text-align: center;
+}
+
+.subtitle {
+    color: var(--text-muted);
+    font-size: clamp(13px, 2.5vw, 14px);
+    text-align: center;
+    margin-bottom: var(--spacing-xl);
+    letter-spacing: 0.3px;
+}
+
+/* ==========================================
+   FORM ELEMENTS
+   ========================================== */
+.form-group {
+    margin-bottom: clamp(16px, 3vh, 18px);
+    animation: fadeInUp 0.6s ease-out both;
+}
+
+.form-group:nth-child(1) { animation-delay: 0.1s; }
+.form-group:nth-child(2) { animation-delay: 0.2s; }
+.form-group:nth-child(3) { animation-delay: 0.3s; }
+.form-group:nth-child(4) { animation-delay: 0.4s; }
+.form-group:nth-child(5) { animation-delay: 0.5s; }
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+label {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+    letter-spacing: 0.3px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--dark-overlay);
+    border: 2px solid rgba(59, 130, 246, 0.2);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    transition: all var(--transition-base);
+    outline: none;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus {
+    background: rgba(15, 23, 42, 0.9);
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    transform: translateY(-1px);
+}
+
+input::placeholder {
+    color: var(--text-disabled);
+    opacity: 0.7;
+}
+
+input:valid:not(:placeholder-shown) {
+    border-color: rgba(34, 197, 94, 0.4);
+}
+
+/* ==========================================
+   PASSWORD WRAPPER & TOGGLE
+   ========================================== */
+.password-wrapper {
+    position: relative;
+}
+
+.password-wrapper input {
+    padding-right: 48px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-disabled);
+    cursor: pointer;
+    padding: 8px;
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+}
+
+.toggle-password:hover {
+    color: var(--primary-blue);
+    background: rgba(59, 130, 246, 0.1);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.toggle-password:focus {
+    outline: 2px solid var(--primary-blue);
+    outline-offset: 2px;
+}
+
+/* ==========================================
+   PASSWORD STRENGTH INDICATOR
+   ========================================== */
+.password-strength {
+    margin-top: 10px;
+    display: none;
+}
+
+.password-strength.active {
+    display: block;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.strength-bar {
+    height: 4px;
+    background: rgba(59, 130, 246, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.strength-fill {
+    height: 100%;
+    width: 0%;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 4px;
+}
+
+.strength-fill.weak {
+    width: 33%;
+    background: linear-gradient(90deg, var(--error) 0%, #dc2626 100%);
+}
+
+.strength-fill.medium {
+    width: 66%;
+    background: linear-gradient(90deg, var(--warning) 0%, #d97706 100%);
+}
+
+.strength-fill.strong {
+    width: 100%;
+    background: linear-gradient(90deg, var(--success) 0%, #16a34a 100%);
+}
+
+.strength-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* ==========================================
+   CHECKBOX & TERMS
+   ========================================== */
+.form-group.checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: var(--spacing-xl);
+}
+
+.form-group.checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    margin-top: 2px;
+    cursor: pointer;
+    accent-color: var(--primary-blue);
+}
+
+.form-group.checkbox label {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    cursor: pointer;
+    font-weight: 400;
+}
+
+.form-group.checkbox a {
+    color: var(--primary-blue);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color var(--transition-base);
+}
+
+.form-group.checkbox a:hover {
+    color: var(--primary-cyan);
+    text-decoration: underline;
+}
+
+/* ==========================================
+   SUBMIT BUTTON
+   ========================================== */
+.btn-primary {
+    width: 100%;
+    padding: clamp(14px, 2.5vh, 16px);
+    background: linear-gradient(135deg, var(--primary-blue) 0%, #2563eb 50%, #1d4ed8 100%);
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: clamp(14px, 2.5vw, 15px);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
+}
+
+.btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.6s;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #1e40af 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 15px 40px rgba(59, 130, 246, 0.6);
+}
+
+.btn-primary:hover::before {
+    transform: translateX(100%);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-primary:focus {
+    outline: 2px solid var(--primary-blue);
+    outline-offset: 2px;
+}
+
+/* ==========================================
+   MESSAGES & ALERTS
+   ========================================== */
+.messages {
+    margin-bottom: var(--spacing-lg);
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    animation: slideDown 0.4s ease-out;
+    border: 1px solid;
+}
+
+.alert-success {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--success);
+}
+
+.alert-error,
+.alert-danger {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: var(--error);
+}
+
+.alert-warning {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: var(--warning);
+}
+
+.alert-info {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: var(--info);
+}
+
+/* ==========================================
+   ERROR MESSAGES
+   ========================================== */
+.error-message {
+    display: none;
+    color: var(--error);
+    font-size: 12px;
+    margin-top: 6px;
+    font-weight: 500;
+}
+
+.error-message.active {
+    display: block;
+    animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
+}
+
+/* ==========================================
+   LINKS & FOOTER TEXT
+   ========================================== */
+.login-link,
+.signup-link,
+.teacher-link {
+    text-align: center;
+    margin-top: clamp(12px, 2vh, 14px);
+    font-size: clamp(13px, 2.5vw, 14px);
+    color: var(--text-muted);
+}
+
+.login-link a,
+.signup-link a,
+.teacher-link a {
+    color: var(--primary-blue);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all var(--transition-base);
+}
+
+.login-link a:hover,
+.signup-link a:hover,
+.teacher-link a:hover {
+    color: var(--primary-cyan);
+    text-decoration: underline;
+}
+
+/* ==========================================
+   RESPONSIVE DESIGN
+   ========================================== */
+@media (max-width: 768px) {
+    body {
+        padding: var(--spacing-lg) var(--spacing-md);
+    }
+
+    .signup-card,
+    .login-card {
+        padding: clamp(28px, 5vw, 32px) clamp(24px, 5vw, 28px);
+    }
+
+    .orb {
+        filter: blur(70px);
+        opacity: 0.2;
+    }
+}
+
+@media (max-width: 480px) {
+    .form-group.checkbox {
+        align-items: flex-start;
+    }
+
+    .form-group.checkbox input[type="checkbox"] {
+        margin-top: 4px;
+    }
+}
+
+/* ==========================================
+   ACCESSIBILITY
+   ========================================== */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Focus visible for keyboard navigation */
+*:focus-visible {
+    outline: 2px solid var(--primary-blue);
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .signup-card,
+    .login-card {
+        border-width: 2px;
+    }
+    
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+        border-width: 2px;
+    }
+}
+
+/* Print styles */
+@media print {
+    .video-background,
+    .animated-bg {
+        display: none;
+    }
+    
+    body {
+        background: white;
+    }
+    
+    .signup-card,
+    .login-card {
+        box-shadow: none;
+        border: 1px solid #000;
+    }
+}
