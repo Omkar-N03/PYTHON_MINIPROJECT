@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import transaction
+from django.db import transaction, models
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
@@ -11,19 +11,18 @@ from django.http import JsonResponse
 from django.db.models import Avg
 import json
 import logging
+import os
+import google.generativeai as genai
 from .models import Quiz, Question, QuizAttempt, StudentAnswer, Teacher, Student, Option
 from django.contrib.auth.models import User
-
 
 # Configure logging
 logger = logging.getLogger('quiz')
 
-
 # ==========================================
 # CONSTANTS
 # ==========================================
-
-# Error Messages
+# ... (No changes to constants) ...
 TEACHER_PROFILE_NOT_FOUND = 'Teacher profile not found.'
 STUDENT_PROFILE_NOT_FOUND = 'Student profile not found.'
 TEACHER_CREATE_QUIZ_ERROR = 'You must be a teacher to create quizzes.'
@@ -63,30 +62,24 @@ ATTEMPT_STATUS_IN_PROGRESS = 'in_progress'
 # Validation Constants
 MIN_PASSWORD_LENGTH = 8
 
-
 # ==========================================
 # HELPER FUNCTIONS
 # ==========================================
+# ... (Keep existing helper functions: validate_signup_data, create_user_with_profile, etc.) ...
 
 def validate_signup_data(username, email, password, password2):
     """Validate signup form data"""
     if not all([username, email, password, password2]):
         return False, 'All fields are required.'
-    
     if password != password2:
         return False, 'Passwords do not match.'
-    
     if len(password) < MIN_PASSWORD_LENGTH:
         return False, f'Password must be at least {MIN_PASSWORD_LENGTH} characters long.'
-    
     if User.objects.filter(username=username).exists():
         return False, 'Username already exists.'
-    
     if User.objects.filter(email=email).exists():
         return False, 'Email already registered.'
-    
     return True, None
-
 
 def create_user_with_profile(username, email, password, first_name, last_name, profile_model):
     """Create user and associated profile"""
@@ -105,171 +98,79 @@ def create_user_with_profile(username, email, password, first_name, last_name, p
         logger.error(f"Error creating user: {str(e)}", exc_info=True)
         return False, str(e)
 
-
 def validate_quiz_data(title, category, difficulty, total_marks, time_limit):
     """Validate quiz creation data"""
     if not all([title, category, difficulty, total_marks, time_limit]):
         return False, None, 'Please fill in all required fields.'
-    
     try:
         total_marks_int = int(total_marks)
         time_limit_int = int(time_limit)
-        
         if total_marks_int <= 0 or time_limit_int <= 0:
             return False, None, 'Total marks and time limit must be positive numbers.'
-        
         return True, {'total_marks': total_marks_int, 'time_limit': time_limit_int}, None
     except ValueError:
         return False, None, 'Total marks and time limit must be valid numbers.'
 
-
+# ... (Keep Grade calculation functions as provided) ...
 def calculate_average_score(attempts):
-    """Calculate average score from quiz attempts"""
-    if not attempts.exists():
-        return 0
+    if not attempts.exists(): return 0
     avg = attempts.aggregate(Avg('score'))['score__avg']
     return round(avg, 2) if avg else 0
 
-
 def calculate_grade_distribution(teacher):
-    """
-    Calculate grade distribution for teacher's quizzes
-    Returns list of grade ranges with student counts
-    """
-    all_attempts = QuizAttempt.objects.filter(
-        quiz__created_by=teacher,
-        status=ATTEMPT_STATUS_COMPLETED
-    ).values_list('percentage', flat=True)
-    
-    grade_ranges = [
-        {'label': '90-100', 'count': 0, 'min': 90, 'max': 100},
-        {'label': '80-89', 'count': 0, 'min': 80, 'max': 89},
-        {'label': '70-79', 'count': 0, 'min': 70, 'max': 79},
-        {'label': '60-69', 'count': 0, 'min': 60, 'max': 69},
-        {'label': '50-59', 'count': 0, 'min': 50, 'max': 59},
-        {'label': '0-49', 'count': 0, 'min': 0, 'max': 49},
-    ]
-    
+    all_attempts = QuizAttempt.objects.filter(quiz__created_by=teacher, status=ATTEMPT_STATUS_COMPLETED).values_list('percentage', flat=True)
+    grade_ranges = [{'label': '90-100', 'count': 0, 'min': 90, 'max': 100}, {'label': '80-89', 'count': 0, 'min': 80, 'max': 89}, {'label': '70-79', 'count': 0, 'min': 70, 'max': 79}, {'label': '60-69', 'count': 0, 'min': 60, 'max': 69}, {'label': '50-59', 'count': 0, 'min': 50, 'max': 59}, {'label': '0-49', 'count': 0, 'min': 0, 'max': 49}]
     for percentage in all_attempts:
-        if percentage is None:
-            continue
-        
+        if percentage is None: continue
         for grade_range in grade_ranges:
             if grade_range['min'] <= percentage <= grade_range['max']:
                 grade_range['count'] += 1
                 break
-    
     return [{'label': r['label'], 'count': r['count']} for r in grade_ranges]
-
 
 def calculate_student_grade_distribution(user):
-    """
-    Calculate grade distribution for a specific student
-    Shows their performance across all attempts
-    """
-    student_attempts = QuizAttempt.objects.filter(
-        student=user,
-        status=ATTEMPT_STATUS_COMPLETED
-    ).values_list('percentage', flat=True)
-    
-    grade_ranges = [
-        {'label': '90-100', 'count': 0, 'min': 90, 'max': 100},
-        {'label': '80-89', 'count': 0, 'min': 80, 'max': 89},
-        {'label': '70-79', 'count': 0, 'min': 70, 'max': 79},
-        {'label': '60-69', 'count': 0, 'min': 60, 'max': 69},
-        {'label': '50-59', 'count': 0, 'min': 50, 'max': 59},
-        {'label': '0-49', 'count': 0, 'min': 0, 'max': 49},
-    ]
-    
+    student_attempts = QuizAttempt.objects.filter(student=user, status=ATTEMPT_STATUS_COMPLETED).values_list('percentage', flat=True)
+    grade_ranges = [{'label': '90-100', 'count': 0, 'min': 90, 'max': 100}, {'label': '80-89', 'count': 0, 'min': 80, 'max': 89}, {'label': '70-79', 'count': 0, 'min': 70, 'max': 79}, {'label': '60-69', 'count': 0, 'min': 60, 'max': 69}, {'label': '50-59', 'count': 0, 'min': 50, 'max': 59}, {'label': '0-49', 'count': 0, 'min': 0, 'max': 49}]
     for percentage in student_attempts:
-        if percentage is None:
-            continue
-        
+        if percentage is None: continue
         for grade_range in grade_ranges:
             if grade_range['min'] <= percentage <= grade_range['max']:
                 grade_range['count'] += 1
                 break
-    
     return [{'label': r['label'], 'count': r['count']} for r in grade_ranges]
 
-
 def calculate_student_performance_stats(user):
-    """
-    Calculate detailed performance statistics for a student
-    """
-    completed_attempts = QuizAttempt.objects.filter(
-        student=user,
-        status=ATTEMPT_STATUS_COMPLETED
-    )
-    
+    completed_attempts = QuizAttempt.objects.filter(student=user, status=ATTEMPT_STATUS_COMPLETED)
     if not completed_attempts.exists():
-        return {
-            'total_quizzes': 0,
-            'passed_quizzes': 0,
-            'failed_quizzes': 0,
-            'avg_score': 0,
-            'best_score': 0,
-            'worst_score': 0,
-            'pass_rate': 0,
-        }
-    
+        return {'total_quizzes': 0, 'passed_quizzes': 0, 'failed_quizzes': 0, 'avg_score': 0, 'best_score': 0, 'worst_score': 0, 'pass_rate': 0}
     scores = [attempt.score for attempt in completed_attempts if attempt.score is not None]
     passed_count = completed_attempts.filter(passed=True).count()
     failed_count = completed_attempts.filter(passed=False).count()
     total_count = completed_attempts.count()
-    
-    return {
-        'total_quizzes': total_count,
-        'passed_quizzes': passed_count,
-        'failed_quizzes': failed_count,
-        'avg_score': round(sum(scores) / len(scores), 2) if scores else 0,
-        'best_score': max(scores) if scores else 0,
-        'worst_score': min(scores) if scores else 0,
-        'pass_rate': round((passed_count / total_count) * 100, 1) if total_count > 0 else 0,
-    }
-
+    return {'total_quizzes': total_count, 'passed_quizzes': passed_count, 'failed_quizzes': failed_count, 'avg_score': round(sum(scores) / len(scores), 2) if scores else 0, 'best_score': max(scores) if scores else 0, 'worst_score': min(scores) if scores else 0, 'pass_rate': round((passed_count / total_count) * 100, 1) if total_count > 0 else 0}
 
 def serialize_questions_for_json(questions):
-    """Serialize questions with options for JSON output"""
     questions_data = []
-    
     for question in questions:
         options = Option.objects.filter(question=question).order_by('id')
-        
-        question_dict = {
-            'id': question.id,
-            'text': question.question_text,
-            'marks': question.marks,
-            'options': []
-        }
-        
+        question_dict = {'id': question.id, 'text': question.question_text, 'marks': question.marks, 'options': []}
         for opt in options:
-            question_dict['options'].append({
-                'id': opt.id,
-                'text': opt.option_text
-            })
-        
+            question_dict['options'].append({'id': opt.id, 'text': opt.option_text})
         questions_data.append(question_dict)
-    
     return questions_data
-
 
 # ==========================================
 # AUTHENTICATION VIEWS
 # ==========================================
-
+# ... (Keep all Login/Signup/Logout views exactly as they are) ...
 def teacher_login(request):
-    """Teacher login view"""
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
-        
         if not username or not password:
             messages.error(request, 'Please provide both username and password.')
             return render(request, TEMPLATE_TEACHER_LOGIN)
-        
         user = authenticate(request, username=username, password=password)
-        
         if user is not None:
             if hasattr(user, 'teacher'):
                 login(request, user)
@@ -279,12 +180,9 @@ def teacher_login(request):
             messages.error(request, 'You do not have teacher access.')
         else:
             messages.error(request, 'Invalid username or password.')
-    
     return render(request, TEMPLATE_TEACHER_LOGIN)
 
-
 def teacher_signup(request):
-    """Teacher signup view"""
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         email = request.POST.get('email', '').strip()
@@ -292,34 +190,25 @@ def teacher_signup(request):
         password2 = request.POST.get('password2', '')
         first_name = request.POST.get('first_name', '').strip()
         last_name = request.POST.get('last_name', '').strip()
-        
         is_valid, error_message = validate_signup_data(username, email, password, password2)
         if not is_valid:
             messages.error(request, error_message)
             return render(request, TEMPLATE_TEACHER_SIGNUP)
-        
         success, error = create_user_with_profile(username, email, password, first_name, last_name, Teacher)
         if success:
             messages.success(request, 'Account created successfully! Please login.')
             return redirect(TEACHER_LOGIN_URL)
-        
         messages.error(request, f'Error creating account: {error}')
-    
     return render(request, TEMPLATE_TEACHER_SIGNUP)
 
-
 def student_login(request):
-    """Student login view"""
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
-        
         if not username or not password:
             messages.error(request, 'Please provide both username and password.')
             return render(request, TEMPLATE_STUDENT_LOGIN)
-        
         user = authenticate(request, username=username, password=password)
-        
         if user is not None:
             if hasattr(user, 'student'):
                 login(request, user)
@@ -329,12 +218,9 @@ def student_login(request):
             messages.error(request, 'You do not have student access.')
         else:
             messages.error(request, 'Invalid username or password.')
-    
     return render(request, TEMPLATE_STUDENT_LOGIN)
 
-
 def student_signup(request):
-    """Student signup view"""
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         email = request.POST.get('email', '').strip()
@@ -342,48 +228,33 @@ def student_signup(request):
         password2 = request.POST.get('password2', '')
         first_name = request.POST.get('first_name', '').strip()
         last_name = request.POST.get('last_name', '').strip()
-        
         is_valid, error_message = validate_signup_data(username, email, password, password2)
         if not is_valid:
             messages.error(request, error_message)
             return render(request, TEMPLATE_STUDENT_SIGNUP)
-        
         success, error = create_user_with_profile(username, email, password, first_name, last_name, Student)
         if success:
             messages.success(request, 'Account created successfully! Please login.')
             return redirect(STUDENT_LOGIN_URL)
-        
         messages.error(request, f'Error creating account: {error}')
-    
     return render(request, TEMPLATE_STUDENT_SIGNUP)
 
-
 def logout_view(request):
-    """Logout view"""
     logout(request)
     messages.success(request, 'You have been logged out successfully.')
     return redirect('home')
 
-
 # ==========================================
-# TEACHER VIEWS
+# TEACHER VIEWS (Dashboard, Profile, Create Quiz)
 # ==========================================
-
+# ... (Keep Dashboard, Profile, Edit Profile views as is) ...
 @login_required
 def teacher_dashboard(request):
-    """Teacher dashboard view with analytics"""
     try:
         teacher = request.user.teacher
         quizzes = Quiz.objects.filter(created_by=teacher)
-        
-        # Calculate grade distribution
         grade_distribution = calculate_grade_distribution(teacher)
-        
-        # Get unique students who attempted this teacher's quizzes
-        total_students = QuizAttempt.objects.filter(
-            quiz__created_by=teacher
-        ).values('student').distinct().count()
-        
+        total_students = QuizAttempt.objects.filter(quiz__created_by=teacher).values('student').distinct().count()
         context = {
             'teacher': teacher,
             'quizzes': quizzes.order_by('-created_at')[:5],
@@ -393,57 +264,38 @@ def teacher_dashboard(request):
             'active_quizzes': quizzes.filter(status=QUIZ_STATUS_ACTIVE).count(),
             'grade_distribution': json.dumps(grade_distribution),
         }
-        
-        logger.info(f"Dashboard loaded for {teacher.user.username} - Grade distribution: {grade_distribution}")
-        
         return render(request, TEMPLATE_TEACHER_DASHBOARD, context)
     except (ObjectDoesNotExist, AttributeError) as e:
-        logger.error(f"Error loading teacher dashboard: {str(e)}", exc_info=True)
         messages.error(request, TEACHER_PROFILE_NOT_FOUND)
         return redirect('home')
 
-
 @login_required
 def teacher_profile(request):
-    """Teacher profile view"""
     try:
         teacher = request.user.teacher
-        context = {
-            'teacher': teacher,
-            'total_quizzes': Quiz.objects.filter(created_by=teacher).count(),
-        }
+        context = {'teacher': teacher, 'total_quizzes': Quiz.objects.filter(created_by=teacher).count()}
         return render(request, TEMPLATE_TEACHER_PROFILE, context)
     except (ObjectDoesNotExist, AttributeError):
         messages.error(request, TEACHER_PROFILE_NOT_FOUND)
         return redirect('home')
 
-
 @login_required
 def teacher_profile_edit(request):
-    """Edit teacher profile"""
     if request.method == 'POST':
         try:
             request.user.first_name = request.POST.get('first_name', '').strip()
             request.user.last_name = request.POST.get('last_name', '').strip()
             request.user.email = request.POST.get('email', '').strip()
             request.user.save()
-            
             teacher = request.user.teacher
-            if hasattr(teacher, 'phone'):
-                teacher.phone = request.POST.get('phone', '').strip()
-            if hasattr(teacher, 'bio'):
-                teacher.bio = request.POST.get('bio', '').strip()
+            if hasattr(teacher, 'phone'): teacher.phone = request.POST.get('phone', '').strip()
+            if hasattr(teacher, 'bio'): teacher.bio = request.POST.get('bio', '').strip()
             teacher.save()
-            
             messages.success(request, 'Profile updated successfully!')
         except Exception as e:
-            logger.error(f"Error updating teacher profile: {str(e)}", exc_info=True)
             messages.error(request, f'Error updating profile: {str(e)}')
-        
         return redirect('quiz:teacher_profile')
-    
     return redirect('quiz:teacher_profile')
-
 
 @login_required
 def create_quiz(request):
@@ -459,9 +311,8 @@ def create_quiz(request):
     
     return render(request, TEMPLATE_TEACHER_CREATE_QUIZ)
 
-
 def handle_quiz_creation(request, teacher):
-    """Handle quiz creation POST request"""
+    # ... (Logic for handling MANUAL quiz submission from the form) ...
     title = request.POST.get('title', '').strip()
     category = request.POST.get('category', '').strip()
     difficulty = request.POST.get('difficulty', '').strip()
@@ -495,72 +346,36 @@ def handle_quiz_creation(request, teacher):
     
     return render(request, TEMPLATE_TEACHER_CREATE_QUIZ)
 
-
+# ... (Keep Helper functions create_quiz_object, create_questions_and_options, parse_questions_from_post, extract_question_data) ...
 def create_quiz_object(teacher, title, category, difficulty, validated_data, description):
-    """Create Quiz object"""
-    return Quiz.objects.create(
-        created_by=teacher,
-        title=title,
-        category=category,
-        difficulty=difficulty,
-        total_marks=validated_data['total_marks'],
-        time_limit=validated_data['time_limit'],
-        description=description,
-        status=QUIZ_STATUS_ACTIVE
-    )
-
+    return Quiz.objects.create(created_by=teacher, title=title, category=category, difficulty=difficulty, total_marks=validated_data['total_marks'], time_limit=validated_data['time_limit'], description=description, status=QUIZ_STATUS_ACTIVE)
 
 def create_questions_and_options(quiz, questions_data):
-    """Create questions and options for a quiz"""
     for order, q_data in enumerate(questions_data, start=1):
-        question = Question.objects.create(
-            quiz=quiz,
-            question_text=q_data['text'],
-            question_type=q_data.get('type', 'multiple_choice'),
-            marks=int(q_data.get('marks', 1)),
-            explanation=q_data.get('explanation', ''),
-            order=order
-        )
-        
+        question = Question.objects.create(quiz=quiz, question_text=q_data['text'], question_type=q_data.get('type', 'multiple_choice'), marks=int(q_data.get('marks', 1)), explanation=q_data.get('explanation', ''), order=order)
         correct_index = int(q_data.get('correct', 0))
         for idx, option_text in enumerate(q_data['options']):
             if option_text.strip():
-                Option.objects.create(
-                    question=question,
-                    option_text=option_text.strip(),
-                    is_correct=(idx == correct_index)
-                )
-
+                Option.objects.create(question=question, option_text=option_text.strip(), is_correct=(idx == correct_index))
 
 def parse_questions_from_post(post_data):
-    """Parse questions from POST data"""
     questions = []
     question_numbers = set()
-    
     for key in post_data.keys():
         if key.startswith('questions['):
             try:
                 q_num = key.split('[')[1].split(']')[0]
                 question_numbers.add(q_num)
-            except IndexError:
-                continue
-    
+            except IndexError: continue
     for q_num in sorted(question_numbers, key=lambda x: int(x) if x.isdigit() else 0):
         question_data = extract_question_data(post_data, q_num)
-        if question_data:
-            questions.append(question_data)
-    
+        if question_data: questions.append(question_data)
     return questions
 
-
 def extract_question_data(post_data, q_num):
-    """Extract single question data from POST"""
     try:
         question_text = post_data.get(f'questions[{q_num}][text]', '').strip()
-        
-        if not question_text:
-            return None
-        
+        if not question_text: return None
         question_data = {
             'text': question_text,
             'type': post_data.get(f'questions[{q_num}][type]', 'multiple_choice'),
@@ -569,43 +384,34 @@ def extract_question_data(post_data, q_num):
             'correct': post_data.get(f'questions[{q_num}][correct]', '0'),
             'options': post_data.getlist(f'questions[{q_num}][options][]')
         }
-        
         if question_data['options'] and any(opt.strip() for opt in question_data['options']):
             return question_data
-        
         return None
     except Exception as e:
         logger.error(f"Error extracting question data: {str(e)}", exc_info=True)
         return None
 
-
+# ... (Keep manage_quizzes, edit_quiz, delete_quiz, manage_questions, add_questions) ...
 @login_required
 def manage_quizzes(request):
-    """Manage quizzes view"""
     try:
         teacher = request.user.teacher
         quizzes = Quiz.objects.filter(created_by=teacher).order_by('-created_at')
-        
         for quiz in quizzes:
             quiz.question_count = Question.objects.filter(quiz=quiz).count()
             quiz.attempt_count = QuizAttempt.objects.filter(quiz=quiz).count()
-        
         context = {'quizzes': quizzes}
         return render(request, TEMPLATE_TEACHER_MANAGE_QUIZZES, context)
     except (ObjectDoesNotExist, AttributeError):
         messages.error(request, TEACHER_PROFILE_NOT_FOUND)
         return redirect('home')
 
-
 @login_required
 def edit_quiz(request, quiz_id):
-    """Edit quiz view"""
     quiz = get_object_or_404(Quiz, id=quiz_id)
-    
     if quiz.created_by.user != request.user:
         messages.error(request, 'You do not have permission to edit this quiz.')
         return redirect(MANAGE_QUIZZES_URL)
-    
     if request.method == 'POST':
         try:
             quiz.title = request.POST.get('title', '').strip()
@@ -615,397 +421,400 @@ def edit_quiz(request, quiz_id):
             quiz.time_limit = int(request.POST.get('time_limit', 0))
             quiz.description = request.POST.get('description', '').strip()
             quiz.save()
-            
             messages.success(request, 'Quiz updated successfully!')
             return redirect(MANAGE_QUIZZES_URL)
         except Exception as e:
-            logger.error(f"Error updating quiz: {str(e)}", exc_info=True)
             messages.error(request, f'Error updating quiz: {str(e)}')
-    
     context = {'quiz': quiz}
     return render(request, TEMPLATE_TEACHER_EDIT_QUIZ, context)
-
 
 @login_required
 @require_http_methods(["POST"])
 def delete_quiz(request, quiz_id):
-    """Delete quiz"""
     quiz = get_object_or_404(Quiz, id=quiz_id)
-    
     if quiz.created_by.user == request.user:
         quiz_title = quiz.title
         quiz.delete()
         messages.success(request, f'Quiz "{quiz_title}" deleted successfully!')
     else:
         messages.error(request, 'You do not have permission to delete this quiz.')
-    
     return redirect(MANAGE_QUIZZES_URL)
-
 
 @login_required
 def manage_questions(request, quiz_id):
-    """Manage questions for a quiz"""
     quiz = get_object_or_404(Quiz, id=quiz_id)
-    
     if quiz.created_by.user != request.user:
         messages.error(request, 'You do not have permission to manage this quiz.')
         return redirect(MANAGE_QUIZZES_URL)
-    
     questions = Question.objects.filter(quiz=quiz).order_by('order')
-    
     context = {'quiz': quiz, 'questions': questions}
     return render(request, TEMPLATE_TEACHER_MANAGE_QUESTIONS, context)
 
-
 @login_required
 def add_questions(request, quiz_id):
-    """Add questions to quiz"""
     quiz = get_object_or_404(Quiz, id=quiz_id)
-    
     if quiz.created_by.user != request.user:
         messages.error(request, 'You do not have permission to modify this quiz.')
         return redirect(MANAGE_QUIZZES_URL)
-    
     context = {'quiz': quiz}
     return render(request, TEMPLATE_TEACHER_ADD_QUESTIONS, context)
 
 
+# ==========================================
+# AI GENERATION HELPER AND VIEW (UPDATED)
+# ==========================================
+
+def call_gemini_api(topic, num_questions, difficulty, instructions=""):
+    """Helper to call Gemini API with context instructions."""
+    # Ensure GEMINI_API_KEY is in your .env file
+    api_key = os.getenv("GEMINI_API_KEY") 
+    if not api_key:
+        logger.error("GEMINI_API_KEY not found.")
+        return []
+
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+
+    prompt = f"""
+    Act as an expert teacher. Create {num_questions} multiple-choice questions.
+    
+    Topic: "{topic}"
+    Difficulty: {difficulty}
+    Context/Instructions: "{instructions}"
+    
+    CRITICAL RULES:
+    1. If instructions are provided, prioritize them.
+    2. Provide 4 distinct options per question.
+    3. Return ONLY a raw JSON array. NO markdown.
+    
+    Required JSON Structure:
+    [
+        {{
+            "question_text": "Question string?",
+            "options": ["A", "B", "C", "D"],
+            "correct_option_index": 0,
+            "explanation": "Brief explanation."
+        }}
+    ]
+    """
+
+    try:
+        response = model.generate_content(prompt)
+        clean_text = response.text.strip()
+        if clean_text.startswith("```json"): clean_text = clean_text[7:]
+        if clean_text.startswith("```"): clean_text = clean_text[3:]
+        if clean_text.endswith("```"): clean_text = clean_text[:-3]
+        return json.loads(clean_text)
+    except Exception as e:
+        logger.error(f"Gemini API Error: {str(e)}")
+        return []
+
+@login_required
+@require_http_methods(["POST"])
+def generate_questions_api(request):
+    """API Endpoint to generate questions without saving them immediately."""
+    try:
+        data = json.loads(request.body)
+        topic = data.get('topic')
+        num_questions = data.get('num_questions', 5)
+        difficulty = data.get('difficulty', 'Medium')
+        instructions = data.get('instructions', '')
+
+        # REMOVED quiz_id check. We only need a topic.
+        if not topic:
+            return JsonResponse({'status': 'error', 'message': 'Topic is required'}, status=400)
+
+        generated_data = call_gemini_api(topic, num_questions, difficulty, instructions)
+        
+        if not generated_data:
+            return JsonResponse({'status': 'error', 'message': 'AI failed to generate data'}, status=500)
+
+        # Normalize data for frontend
+        normalized_questions = []
+        for item in generated_data:
+            normalized_questions.append({
+                'text': item.get('question_text'),
+                'options': item.get('options'),
+                'correct': item.get('correct_option_index', 0),
+                'type': 'multiple_choice',
+                'marks': 1,
+                'explanation': item.get('explanation', '')
+            })
+
+        return JsonResponse({'status': 'success', 'questions': normalized_questions})
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+
+
+        # Transform data to match what the frontend expects
+        # (The frontend expects 'text', 'options', 'correct', 'explanation')
+        normalized_questions = []
+        for item in generated_data:
+            normalized_questions.append({
+                'text': item.get('question_text'),
+                'options': item.get('options'),
+                'correct': item.get('correct_option_index', 0),
+                'type': 'multiple_choice',
+                'marks': 1,
+                'explanation': item.get('explanation', '')
+            })
+
+        # Return questions to the frontend (Javascript will render them)
+        return JsonResponse({'status': 'success', 'questions': normalized_questions})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"Generate API Error: {str(e)}", exc_info=True)
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+
+@login_required
+@require_http_methods(["POST"])
+def generate_questions_api(request):
+    """
+    API Endpoint to generate and return questions (AJAX).
+    UPDATED: Now extracts 'instructions' from request body.
+    """
+    try:
+        data = json.loads(request.body)
+        
+        # Extract fields
+        topic = data.get('topic')
+        num_questions = data.get('num_questions', 5)
+        difficulty = data.get('difficulty', 'Medium')
+        instructions = data.get('instructions', '') # New field
+        
+        # NOTE: Logic Change - In the previous step we decided NOT to require quiz_id here
+        # because the quiz might be in the process of being created. 
+        # If your frontend sends quiz_id, we can use it, otherwise we just return the questions
+        # to the frontend to be rendered in the form.
+        quiz_id = data.get('quiz_id')
+
+        if not topic:
+            return JsonResponse({'status': 'error', 'message': 'Topic is required'}, status=400)
+
+        # Call AI
+        generated_data = call_gemini_api(topic, num_questions, difficulty, instructions)
+        
+        if not generated_data:
+            return JsonResponse({'status': 'error', 'message': 'AI failed to generate valid data'}, status=500)
+
+        # If a quiz_id WAS provided (e.g., adding questions to existing quiz), save them immediately.
+        # Otherwise, return them to the frontend to be displayed in the "Create Quiz" wizard.
+        saved_count = 0
+        questions_to_return = []
+        
+        if quiz_id:
+            # SAVE MODE (Add to existing quiz)
+            quiz = get_object_or_404(Quiz, id=quiz_id)
+            if quiz.created_by.user != request.user:
+                return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+
+            with transaction.atomic():
+                current_max_order = Question.objects.filter(quiz=quiz).aggregate(models.Max('order'))['order__max'] or 0
+                for index, item in enumerate(generated_data):
+                    question = Question.objects.create(
+                        quiz=quiz,
+                        question_text=item['question_text'],
+                        question_type='multiple_choice',
+                        marks=1,
+                        explanation=item.get('explanation', ''),
+                        order=current_max_order + index + 1
+                    )
+                    correct_idx = int(item.get('correct_option_index', 0))
+                    for opt_idx, opt_text in enumerate(item['options']):
+                        Option.objects.create(
+                            question=question,
+                            option_text=opt_text,
+                            is_correct=(opt_idx == correct_idx)
+                        )
+                    saved_count += 1
+            return JsonResponse({'status': 'success', 'count': saved_count})
+            
+        else:
+            # PREVIEW MODE (Return to frontend for "Create Quiz" wizard)
+            # Normalize data for frontend JS (addQuestion function)
+            normalized_questions = []
+            for item in generated_data:
+                normalized_questions.append({
+                    'text': item['question_text'],
+                    'options': item['options'],
+                    'correct': item.get('correct_option_index', 0),
+                    'type': 'multiple_choice',
+                    'marks': 1,
+                    'explanation': item.get('explanation', '')
+                })
+            return JsonResponse({'status': 'success', 'questions': normalized_questions})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"Generate API Error: {str(e)}", exc_info=True)
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
 @login_required
 @require_http_methods(["POST"])
 def delete_question(request, question_id):
-    """Delete a question"""
+    # ... (Keep existing delete_question logic) ...
     question = get_object_or_404(Question, id=question_id)
     quiz = question.quiz
-    
     if quiz.created_by.user != request.user:
         messages.error(request, 'You do not have permission to delete this question.')
         return redirect(MANAGE_QUIZZES_URL)
-    
     question.delete()
     messages.success(request, 'Question deleted successfully!')
-    
     return redirect('quiz:manage_questions', quiz_id=quiz.id)
 
-
+# ==========================================
+# RESULT & ATTEMPT VIEWS
+# ==========================================
+# ... (Keep all Result/Attempt views: view_quiz_results, view_attempt_details, etc.) ...
 @login_required
 def view_quiz_results(request, quiz_id):
-    """View quiz results with grade distribution"""
     quiz = get_object_or_404(Quiz, id=quiz_id)
-    
     if quiz.created_by.user != request.user:
         messages.error(request, 'You do not have permission to view these results.')
         return redirect(MANAGE_QUIZZES_URL)
-    
-    attempts = QuizAttempt.objects.filter(
-        quiz=quiz,
-        status=ATTEMPT_STATUS_COMPLETED
-    ).select_related('student').order_by('-end_time')
-    
+    attempts = QuizAttempt.objects.filter(quiz=quiz, status=ATTEMPT_STATUS_COMPLETED).select_related('student').order_by('-end_time')
     stats = calculate_attempt_stats(attempts)
     quiz_grade_distribution = calculate_quiz_specific_grade_distribution(attempts)
-    
-    context = {
-        'quiz': quiz,
-        'attempts': attempts,
-        'total_attempts': attempts.count(),
-        'avg_score': stats['avg_score'],
-        'max_score': stats['max_score'],
-        'min_score': stats['min_score'],
-        'grade_distribution': json.dumps(quiz_grade_distribution),
-    }
+    context = {'quiz': quiz, 'attempts': attempts, 'total_attempts': attempts.count(), 'avg_score': stats['avg_score'], 'max_score': stats['max_score'], 'min_score': stats['min_score'], 'grade_distribution': json.dumps(quiz_grade_distribution)}
     return render(request, TEMPLATE_TEACHER_VIEW_RESULT, context)
 
-
 def calculate_quiz_specific_grade_distribution(attempts):
-    """Calculate grade distribution for a specific quiz"""
     percentages = attempts.values_list('percentage', flat=True)
-    
-    grade_ranges = [
-        {'label': '90-100', 'count': 0, 'min': 90, 'max': 100},
-        {'label': '80-89', 'count': 0, 'min': 80, 'max': 89},
-        {'label': '70-79', 'count': 0, 'min': 70, 'max': 79},
-        {'label': '60-69', 'count': 0, 'min': 60, 'max': 69},
-        {'label': '50-59', 'count': 0, 'min': 50, 'max': 59},
-        {'label': '0-49', 'count': 0, 'min': 0, 'max': 49},
-    ]
-    
+    grade_ranges = [{'label': '90-100', 'count': 0, 'min': 90, 'max': 100}, {'label': '80-89', 'count': 0, 'min': 80, 'max': 89}, {'label': '70-79', 'count': 0, 'min': 70, 'max': 79}, {'label': '60-69', 'count': 0, 'min': 60, 'max': 69}, {'label': '50-59', 'count': 0, 'min': 50, 'max': 59}, {'label': '0-49', 'count': 0, 'min': 0, 'max': 49}]
     for percentage in percentages:
-        if percentage is None:
-            continue
-        
+        if percentage is None: continue
         for grade_range in grade_ranges:
             if grade_range['min'] <= percentage <= grade_range['max']:
                 grade_range['count'] += 1
                 break
-    
     return [{'label': r['label'], 'count': r['count']} for r in grade_ranges]
 
-
 def calculate_attempt_stats(attempts):
-    """Calculate statistics from quiz attempts"""
-    if not attempts.exists():
-        return {'avg_score': 0, 'max_score': 0, 'min_score': 0}
-    
+    if not attempts.exists(): return {'avg_score': 0, 'max_score': 0, 'min_score': 0}
     scores = [attempt.score for attempt in attempts if attempt.score is not None]
-    return {
-        'avg_score': round(sum(scores) / len(scores), 2) if scores else 0,
-        'max_score': max(scores) if scores else 0,
-        'min_score': min(scores) if scores else 0
-    }
-
+    return {'avg_score': round(sum(scores) / len(scores), 2) if scores else 0, 'max_score': max(scores) if scores else 0, 'min_score': min(scores) if scores else 0}
 
 @login_required
 def view_attempt_details(request, attempt_id):
-    """View attempt details"""
     attempt = get_object_or_404(QuizAttempt, id=attempt_id)
-    
     if attempt.quiz.created_by.user != request.user:
         messages.error(request, 'You do not have permission to view this attempt.')
         return redirect(MANAGE_QUIZZES_URL)
-    
     answers = StudentAnswer.objects.filter(attempt=attempt).select_related('question', 'selected_option')
-    
     context = {'attempt': attempt, 'answers': answers}
     return render(request, TEMPLATE_TEACHER_ATTEMPT_DETAILS, context)
-
 
 # ==========================================
 # STUDENT VIEWS
 # ==========================================
-
+# ... (Keep all Student views: dashboard, profile, take_quiz, submit_quiz) ...
 @login_required
 def student_dashboard(request):
-    """Student dashboard showing available quizzes and recent attempts with analytics"""
     try:
         student = Student.objects.get(user=request.user)
     except Student.DoesNotExist:
         messages.error(request, STUDENT_PROFILE_NOT_FOUND)
         return redirect(STUDENT_LOGIN_URL)
-    
-    # Get available quizzes
-    available_quizzes = Quiz.objects.filter(
-        status=QUIZ_STATUS_ACTIVE
-    ).select_related('created_by').order_by('-created_at')[:6]
-    
-    # Get recent attempts
-    recent_attempts = QuizAttempt.objects.filter(
-        student=request.user
-    ).select_related('quiz', 'quiz__created_by').order_by('-start_time')[:10]
-    
-    # Calculate statistics
+    available_quizzes = Quiz.objects.filter(status=QUIZ_STATUS_ACTIVE).select_related('created_by').order_by('-created_at')[:6]
+    recent_attempts = QuizAttempt.objects.filter(student=request.user).select_related('quiz', 'quiz__created_by').order_by('-start_time')[:10]
     total_attempts = QuizAttempt.objects.filter(student=request.user).count()
-    completed_attempts = QuizAttempt.objects.filter(
-        student=request.user,
-        status=ATTEMPT_STATUS_COMPLETED
-    )
-    
+    completed_attempts = QuizAttempt.objects.filter(student=request.user, status=ATTEMPT_STATUS_COMPLETED)
     avg_score = calculate_average_score(completed_attempts)
-    
-    # ✅ NEW: Calculate student's grade distribution
     student_grade_distribution = calculate_student_grade_distribution(request.user)
-    
-    # ✅ NEW: Calculate performance metrics
     performance_stats = calculate_student_performance_stats(request.user)
-    
-    context = {
-        'student': student,
-        'available_quizzes': available_quizzes,
-        'recent_attempts': recent_attempts,
-        'total_attempts': total_attempts,
-        'completed_attempts': completed_attempts.count(),
-        'avg_score': round(avg_score, 2),
-        'grade_distribution': json.dumps(student_grade_distribution),  # ✅ NEW
-        'performance_stats': json.dumps(performance_stats),  # ✅ NEW
-    }
-    
+    context = {'student': student, 'available_quizzes': available_quizzes, 'recent_attempts': recent_attempts, 'total_attempts': total_attempts, 'completed_attempts': completed_attempts.count(), 'avg_score': round(avg_score, 2), 'grade_distribution': json.dumps(student_grade_distribution), 'performance_stats': json.dumps(performance_stats)}
     logger.info(f"Student dashboard loaded for {request.user.username} - Stats: {performance_stats}")
-    
     return render(request, TEMPLATE_STUDENT_DASHBOARD, context)
-
 
 @login_required
 def student_profile(request):
-    """Student profile view"""
     try:
         student = request.user.student
-        
         total_quizzes = QuizAttempt.objects.filter(student=request.user).count()
-        completed_quizzes = QuizAttempt.objects.filter(
-            student=request.user,
-            status=ATTEMPT_STATUS_COMPLETED
-        ).count()
-        
-        completed_attempts = QuizAttempt.objects.filter(
-            student=request.user,
-            status=ATTEMPT_STATUS_COMPLETED
-        )
-        
+        completed_quizzes = QuizAttempt.objects.filter(student=request.user, status=ATTEMPT_STATUS_COMPLETED).count()
+        completed_attempts = QuizAttempt.objects.filter(student=request.user, status=ATTEMPT_STATUS_COMPLETED)
         avg_score = calculate_average_score(completed_attempts)
-        
-        recent_attempts = QuizAttempt.objects.filter(
-            student=request.user
-        ).select_related('quiz').order_by('-start_time')[:10]
-        
-        context = {
-            'student': student,
-            'total_quizzes': total_quizzes,
-            'completed_quizzes': completed_quizzes,
-            'avg_score': round(avg_score, 2),
-            'recent_attempts': recent_attempts,
-        }
-        
+        recent_attempts = QuizAttempt.objects.filter(student=request.user).select_related('quiz').order_by('-start_time')[:10]
+        context = {'student': student, 'total_quizzes': total_quizzes, 'completed_quizzes': completed_quizzes, 'avg_score': round(avg_score, 2), 'recent_attempts': recent_attempts}
         return render(request, TEMPLATE_STUDENT_PROFILE, context)
-        
     except (ObjectDoesNotExist, AttributeError):
         messages.error(request, STUDENT_PROFILE_NOT_FOUND)
         return redirect(STUDENT_LOGIN_URL)
 
-
 @login_required
 def student_profile_edit(request):
-    """Edit student profile"""
     if request.method == 'POST':
         try:
             request.user.first_name = request.POST.get('first_name', '').strip()
             request.user.last_name = request.POST.get('last_name', '').strip()
             request.user.email = request.POST.get('email', '').strip()
             request.user.save()
-            
             messages.success(request, 'Profile updated successfully!')
         except Exception as e:
-            logger.error(f"Error updating student profile: {str(e)}", exc_info=True)
             messages.error(request, f'Error updating profile: {str(e)}')
-        
         return redirect(STUDENT_PROFILE_URL)
-    
     return redirect(STUDENT_PROFILE_URL)
-
 
 @login_required
 @ensure_csrf_cookie
 def take_quiz(request, quiz_id):
-    """Take/Attempt quiz view - handles both starting and continuing a quiz"""
     quiz = get_object_or_404(Quiz, id=quiz_id)
-    
     if quiz.status != QUIZ_STATUS_ACTIVE:
         messages.error(request, 'This quiz is not available.')
         return redirect(STUDENT_DASHBOARD_URL)
-    
-    # Check if already completed
-    existing_attempt = QuizAttempt.objects.filter(
-        student=request.user,
-        quiz=quiz,
-        status=ATTEMPT_STATUS_COMPLETED
-    ).first()
-    
+    existing_attempt = QuizAttempt.objects.filter(student=request.user, quiz=quiz, status=ATTEMPT_STATUS_COMPLETED).first()
     if existing_attempt:
         messages.info(request, 'You have already completed this quiz.')
         return redirect('quiz:quiz_result', attempt_id=existing_attempt.id)
-    
-    # Get or create in-progress attempt
-    attempt, _ = QuizAttempt.objects.get_or_create(
-        student=request.user,
-        quiz=quiz,
-        status=ATTEMPT_STATUS_IN_PROGRESS,
-        defaults={'start_time': timezone.now()}
-    )
-    
+    attempt, _ = QuizAttempt.objects.get_or_create(student=request.user, quiz=quiz, status=ATTEMPT_STATUS_IN_PROGRESS, defaults={'start_time': timezone.now()})
     questions = Question.objects.filter(quiz=quiz).prefetch_related('option_set').order_by('order')
-    
     if not questions.exists():
         messages.error(request, 'This quiz has no questions yet.')
         return redirect(STUDENT_DASHBOARD_URL)
-    
     questions_data = serialize_questions_for_json(questions)
-    
-    context = {
-        'quiz': quiz,
-        'questions': questions_data,
-        'attempt': attempt,
-        'total_questions': len(questions_data),
-    }
-    
+    context = {'quiz': quiz, 'questions': questions_data, 'attempt': attempt, 'total_questions': len(questions_data)}
     return render(request, TEMPLATE_STUDENT_TAKE_QUIZ, context)
-
 
 @login_required
 @require_http_methods(["POST"])
 @csrf_protect
 def submit_quiz(request, quiz_id):
-    """Handle quiz submission via AJAX"""
+    # ... (Keep existing submit_quiz logic) ...
     logger.info("========== QUIZ SUBMISSION STARTED ==========")
-    logger.info(f"Quiz ID: {quiz_id}, User: {request.user.username}")
-    
     try:
         data = parse_submission_data(request)
-        if not data:
-            return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
-        
+        if not data: return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
         quiz = get_object_or_404(Quiz, id=quiz_id)
-        logger.info(f"Quiz found: {quiz.title}")
-        
         attempt = get_quiz_attempt(request.user, quiz)
-        if not attempt:
-            logger.error("No in-progress attempt found")
-            return JsonResponse({
-                'success': False,
-                'error': 'Quiz attempt not found'
-            }, status=400)
-        
-        logger.info(f"Attempt found: ID={attempt.id}")
-        
+        if not attempt: return JsonResponse({'success': False, 'error': 'Quiz attempt not found'}, status=400)
         result = process_quiz_submission(attempt, quiz, data)
-        
-        logger.info("QUIZ SUBMITTED SUCCESSFULLY")
-        logger.info("========== QUIZ SUBMISSION COMPLETED ==========")
-        
         return JsonResponse(result, status=200)
-        
     except Exception as e:
         logger.error(f"CRITICAL ERROR submitting quiz: {str(e)}", exc_info=True)
-        logger.info("========== QUIZ SUBMISSION FAILED ==========")
-        
-        return JsonResponse({
-            'success': False,
-            'error': f'An error occurred: {str(e)}'
-        }, status=500)
-
+        return JsonResponse({'success': False, 'error': f'An error occurred: {str(e)}'}, status=500)
 
 def parse_submission_data(request):
-    """Parse submission data from request"""
     try:
         data = json.loads(request.body)
-        logger.info("Request body parsed successfully")
-        return {
-            'answers': data.get('answers', {}),
-            'time_spent': data.get('time_spent', 0)
-        }
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON decode error: {str(e)}")
-        return None
-
+        return {'answers': data.get('answers', {}), 'time_spent': data.get('time_spent', 0)}
+    except json.JSONDecodeError as e: return None
 
 def get_quiz_attempt(user, quiz):
-    """Get in-progress quiz attempt"""
-    return QuizAttempt.objects.filter(
-        student=user,
-        quiz=quiz,
-        status=ATTEMPT_STATUS_IN_PROGRESS
-    ).first()
-
+    return QuizAttempt.objects.filter(student=user, quiz=quiz, status=ATTEMPT_STATUS_IN_PROGRESS).first()
 
 def process_quiz_submission(attempt, quiz, data):
-    """Process quiz submission and return results"""
     answers = data['answers']
     time_spent = data['time_spent']
-    
-    logger.info(f"Processing {len(answers)} answers")
-    
     total_score = 0
     max_score = 0
     correct_count = 0
     incorrect_count = 0
-    
     with transaction.atomic():
         for question_id_str, option_id in answers.items():
             try:
@@ -1013,46 +822,18 @@ def process_quiz_submission(attempt, quiz, data):
                 if result:
                     total_score += result['score']
                     max_score += result['max_score']
-                    if result['correct']:
-                        correct_count += 1
-                    else:
-                        incorrect_count += 1
-            except (ValueError, TypeError) as e:
-                logger.warning(f"Invalid data for Q{question_id_str}: {str(e)}")
-                continue
-            except (Question.DoesNotExist, Option.DoesNotExist) as e:
-                logger.warning(f"Database error for Q{question_id_str}: {str(e)}")
-                continue
-        
-        return finalize_attempt(
-            attempt, quiz, total_score, max_score,
-            correct_count, incorrect_count, time_spent
-        )
-
+                    if result['correct']: correct_count += 1
+                    else: incorrect_count += 1
+            except Exception: continue
+        return finalize_attempt(attempt, quiz, total_score, max_score, correct_count, incorrect_count, time_spent)
 
 def process_single_answer(attempt, quiz, question_id_str, option_id):
-    """Process a single answer"""
     question = Question.objects.get(id=int(question_id_str), quiz=quiz)
     selected_option = Option.objects.get(id=int(option_id), question=question)
-    
-    StudentAnswer.objects.update_or_create(
-        attempt=attempt,
-        question=question,
-        defaults={
-            'selected_option': selected_option,
-            'is_correct': selected_option.is_correct
-        }
-    )
-    
-    return {
-        'score': question.marks if selected_option.is_correct else 0,
-        'max_score': question.marks,
-        'correct': selected_option.is_correct
-    }
-
+    StudentAnswer.objects.update_or_create(attempt=attempt, question=question, defaults={'selected_option': selected_option, 'is_correct': selected_option.is_correct})
+    return {'score': question.marks if selected_option.is_correct else 0, 'max_score': question.marks, 'correct': selected_option.is_correct}
 
 def finalize_attempt(attempt, quiz, total_score, max_score, correct_count, incorrect_count, time_spent):
-    """Finalize attempt and return results"""
     attempt.score = total_score
     attempt.max_score = max_score
     attempt.total_marks = max_score
@@ -1060,59 +841,30 @@ def finalize_attempt(attempt, quiz, total_score, max_score, correct_count, incor
     attempt.incorrect_answers = incorrect_count
     attempt.end_time = timezone.now()
     attempt.time_spent = int(time_spent)
-    
     if max_score > 0:
         attempt.percentage = (total_score / max_score) * 100
         attempt.passed = total_score >= quiz.passing_marks
     else:
         attempt.percentage = 0
         attempt.passed = False
-    
     attempt.status = ATTEMPT_STATUS_COMPLETED
     attempt.save()
-    
-    return {
-        'success': True,
-        'attempt_id': attempt.id,
-        'score': attempt.score,
-        'max_score': attempt.max_score,
-        'percentage': round(attempt.percentage, 2),
-        'passed': attempt.passed,
-        'message': 'Quiz submitted successfully!'
-    }
-
+    return {'success': True, 'attempt_id': attempt.id, 'score': attempt.score, 'max_score': attempt.max_score, 'percentage': round(attempt.percentage, 2), 'passed': attempt.passed, 'message': 'Quiz submitted successfully!'}
 
 @login_required
 def quiz_result(request, attempt_id):
-    """View quiz result"""
     attempt = get_object_or_404(QuizAttempt, id=attempt_id, student=request.user)
-    
-    answers = StudentAnswer.objects.filter(
-        attempt=attempt
-    ).select_related('question', 'selected_option').prefetch_related('question__option_set')
-    
+    answers = StudentAnswer.objects.filter(attempt=attempt).select_related('question', 'selected_option').prefetch_related('question__option_set')
     total_questions = answers.count()
     correct_answers = answers.filter(is_correct=True).count()
-    
-    context = {
-        'attempt': attempt,
-        'answers': answers,
-        'quiz': attempt.quiz,
-        'total_questions': total_questions,
-        'correct_answers': correct_answers,
-    }
+    context = {'attempt': attempt, 'answers': answers, 'quiz': attempt.quiz, 'total_questions': total_questions, 'correct_answers': correct_answers}
     return render(request, TEMPLATE_STUDENT_QUIZ_RESULT, context)
-
 
 # ==========================================
 # ADDITIONAL PAGES
 # ==========================================
-
 def about(request):
-    """About page"""
     return render(request, 'about.html')
 
-
 def contact(request):
-    """Contact page"""
     return render(request, 'contact.html')
